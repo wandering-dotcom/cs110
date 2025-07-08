@@ -10,8 +10,8 @@
     </div>
     
     <div class="center-panel">
-      <PostInput v-if="currentUser" @new-post="addPost" />
       <PostFeed :posts="postsToShow" />
+      <PostInput v-if="currentUser" @new-post="addPost" />
     </div>
     
     <div class="right-panel">
