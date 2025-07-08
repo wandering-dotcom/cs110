@@ -1,15 +1,24 @@
 <template>
   <div>
-    Counter Value: {{ count }}
+    Login:
+    <input type=login v-model="loginInput" />
     <br>
-    <template v-if="isEven">The counter is even</template>
-    <template v-else>The counter is odd</template>
-    <br>
-    <button @click="increment">Increment</button>
     <ul>
-      <template v-for="n in count">
-        <li>{{ n }}</li>
+      <li style="color:red" v-if="isEmpty">Enter a username</li>
+      <li style="color:green" v-else>Username is valid</li>
+    </ul>
+  </div>
+  <div>
+    Password:
+    <input type=password v-model="passwordInput" />
+    <br>
+    <ul>
+      <li style="color:red" v-if="isEmpty">Enter a password</li>
+      <template v-else-if="!isValid">
+        <li style="color:red" v-if="!hasNumber">Password must include at least one number</li>
+        <li style="color:red" v-if="!hasLetter">Password must include at least one letter</li>
       </template>
+      <li style="color:green" v-else>Password is valid</li>
     </ul>
   </div>
 </template>
@@ -18,18 +27,23 @@
 export default {
   data() {
     return {
-      count: 0,
+      loginInput: '',
+      passwordInput: ''
     }
   },
   computed: {
-    isEven() {
-      return this.count % 2 == 0
+    isEmpty() {
+      return this.passwordInput.length === 0;
+    },
+    hasNumber() {
+      return /[0-9]/.test(this.passwordInput);
+    },
+    hasLetter() {
+      return /[a-zA-Z]/.test(this.passwordInput);
+    },
+    isValid() {
+      return this.hasNumber && this.hasLetter;
     }
   },
-  methods: {
-    increment() {
-      this.count = this.count + 1;
-    }
-  }
 }
 </script>
