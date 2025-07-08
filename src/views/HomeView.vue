@@ -40,9 +40,9 @@ const userPostsForCurrentUser = computed(() => {
   return store.userPosts[currentUser.value.username] || []
 })
 
-const postsToShow = computed(() => {
-  return currentUser.value ? userPostsForCurrentUser.value : store.allPosts
-})
+const postsToShow = computed(() =>
+  [...store.allPosts].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+)
 
 // For stats
 const userPosts = computed(() =>
@@ -69,21 +69,22 @@ const suggestedFollowers = computed(() => {
 })
 
 function addPost(content) {
-  const username = store.currentUser.username
+  const username = store.currentUser.username;
   const newPost = {
     id: Date.now(),
     author: username,
     content,
     timestamp: new Date()
-  }
+  };
 
-  // SAFELY mutate, never replace the object
+  // Add to allPosts reactively
+  store.allPosts = [newPost, ...store.allPosts];
+
+  // Add to user's own posts
   if (!store.userPosts[username]) {
-    // use Vue.set if needed, or initialize in store.js beforehand
-    store.userPosts[username] = []
+    store.userPosts[username] = [];
   }
-
-  store.userPosts[username].unshift(newPost)
+  store.userPosts[username].unshift(newPost);
 }
 
 function handleFollow(user) {

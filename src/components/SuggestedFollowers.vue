@@ -28,7 +28,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Suggested Followers'
+    default: 'Who to Follow'
   }
 })
 
