@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import PostItem from './PostItem.vue'
+import PostItem from '../components/PostItem.vue'
 const props = defineProps({
   posts: {
     type: Array,

@@ -16,22 +16,31 @@
       </button>
     </div>
 
-    <label>Username:</label>
-    <input type="text" v-model="loginInput" />
+    <input 
+      type="text" 
+      v-model="loginInput" 
+      placeholder="Email" 
+      @input="loginTouched = true" 
+    />
     <ul>
-      <li style="color:red" v-if="loginEmpty">Enter a username</li>
-      <li style="color:green" v-else>Username is valid</li>
+      <li style="color:red" v-if="loginEmpty && loginTouched">Enter an email</li>
+      <li style="color:red" v-if="!loginEmpty && !isEmail && loginTouched">Enter a valid email</li>
+      <li style="color:green" v-if="!loginEmpty && isEmail && loginTouched">Email looks good</li>
     </ul>
 
-    <label>Password:</label>
-    <input type="password" v-model="passwordInput" />
+    <input 
+      type="password" 
+      v-model="passwordInput" 
+      placeholder="Password" 
+      @input="passwordTouched = true" 
+    />
     <ul>
-      <li style="color:red" v-if="passwordEmpty">Enter a password</li>
-      <template v-else-if="!passwordValid">
+      <li style="color:red" v-if="passwordEmpty && passwordTouched">Enter a password</li>
+      <template v-else-if="passwordTouched && !passwordValid">
         <li style="color:red" v-if="!hasNumber">Must include at least one number</li>
         <li style="color:red" v-if="!hasLetter">Must include at least one letter</li>
       </template>
-      <li style="color:green" v-else>Password is valid</li>
+      <li style="color:green" v-if="passwordValid && passwordTouched">Password is valid</li>
     </ul>
 
     <button :disabled="!canSubmit" @click="submit">
@@ -42,6 +51,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { store } from '../stores/store.js'
 
 const emit = defineEmits(['auth-success'])
 
@@ -49,14 +59,23 @@ const creating = ref(false)
 const loginInput = ref('')
 const passwordInput = ref('')
 
+const loginTouched = ref(false)
+const passwordTouched = ref(false)
+
 const loginEmpty = computed(() => loginInput.value.trim().length === 0)
+
+const isEmail = computed(() => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(loginInput.value.trim())
+})
+
 const passwordEmpty = computed(() => passwordInput.value.length === 0)
 const hasNumber = computed(() => /\d/.test(passwordInput.value))
 const hasLetter = computed(() => /[a-zA-Z]/.test(passwordInput.value))
 const passwordValid = computed(() => hasNumber.value && hasLetter.value)
 
 const canSubmit = computed(() =>
-  !loginEmpty.value && !passwordEmpty.value && passwordValid.value
+  !loginEmpty.value && isEmail.value && !passwordEmpty.value && passwordValid.value
 )
 
 function submit() {
@@ -68,6 +87,10 @@ function submit() {
 
   loginInput.value = ''
   passwordInput.value = ''
+  loginTouched.value = false
+  passwordTouched.value = false
+
+  store.currentUser = user
 
   emit('auth-success', user)
 }

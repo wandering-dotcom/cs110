@@ -1,21 +1,26 @@
 <template>
-  <div>
-    <UserStats
-      :user="currentUser"
-      :postsCount="userPosts.length"
-      :followingCount="following.length"
-      :followersCount="followers.length"
-    />
+  <div class="home-container">
+    <div class="left-panel">
+      <UserStats
+        :user="currentUser"
+        :postsCount="userPosts.length"
+        :followingCount="following.length"
+        :followersCount="followers.length"
+      />
+    </div>
     
-    <PostInput v-if="currentUser" @new-post="addPost" />
-
-    <PostFeed :posts="postsToShow" />
-
-    <SuggestedFollowers
-      :suggestions="suggestedFollowers"
-      :canFollow="!!currentUser"
-      @follow="handleFollow"
-    />
+    <div class="center-panel">
+      <PostInput v-if="currentUser" @new-post="addPost" />
+      <PostFeed :posts="postsToShow" />
+    </div>
+    
+    <div class="right-panel">
+      <SuggestedFollowers
+        :suggestions="suggestedFollowers"
+        :canFollow="!!currentUser"
+        @follow="handleFollow"
+      />
+    </div>
   </div>
 </template>
 
@@ -62,16 +67,17 @@ const suggestedFollowers = computed(() => {
 
 function addPost(content) {
   // Mock adding post
+  const username = store.currentUser.username;
   const newPost = {
     id: Date.now(),
-    author: currentUser.value.username,
+    author: username,
     content,
     timestamp: new Date()
   }
-  if (!store.userPosts[currentUser.value.username]) {
-    store.userPosts[currentUser.value.username] = []
+  if (!store.userPosts[username]) {
+    store.userPosts[username] = [];
   }
-  store.userPosts[currentUser.value.username].unshift(newPost)
+  store.userPosts[username].unshift(newPost);
 }
 
 function handleFollow(user) {
@@ -90,3 +96,25 @@ function handleFollow(user) {
   }
 }
 </script>
+
+<style scoped>
+  .home-container {
+  display: flex;
+  gap: 2rem;
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.left-panel, .right-panel {
+  flex: 1;
+  max-width: 250px; /* limit width */
+}
+
+.center-panel {
+  flex: 2; /* take more space */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+</style>
