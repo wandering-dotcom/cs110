@@ -4,13 +4,22 @@ import Navbar from './components/Navbar.vue'
 </script>
 
 <template>
-  <Navbar />  
-  <main class="page-content">
-    <RouterView />
-  </main>
+  <div class="app-wrapper"><
+    <Navbar />  
+    <main class="page-content">
+      <RouterView />
+    </main>
+  </div>
 </template>
 
 <style scoped>
+.app-wrapper {
+  width: 100%;
+  padding: 0 1rem;
+  max-width: none; 
+  margin: 0; 
+}
+
 .page-content {
   padding-top: 60px;
 }
@@ -39,7 +48,12 @@ nav a:first-of-type {
   border: 0;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
+  .app-wrapper {
+    max-width: 1200px;
+    margin: 0 auto; 
+  }
+
   nav {
     text-align: left;
     margin-left: -1rem;
