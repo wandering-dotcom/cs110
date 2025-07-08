@@ -21,7 +21,14 @@ export const store = reactive({
     { username: 'user6' }
   ],
 
-  userPosts: {},
+  userPosts: {
+    user1: [],
+    user2: [],
+    user3: [],
+    user4: [],
+    user5: [],
+    user6: []
+  },
   following: {},
   followers: {}
 })

@@ -35,11 +35,14 @@ import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 const currentUser = computed(() => store.currentUser)
 
 // Show user’s posts if logged in, else global posts
-const postsToShow = computed(() =>
-  currentUser.value
-    ? store.userPosts[currentUser.value.username] || []
-    : store.allPosts
-)
+const userPostsForCurrentUser = computed(() => {
+  if (!currentUser.value) return []
+  return store.userPosts[currentUser.value.username] || []
+})
+
+const postsToShow = computed(() => {
+  return currentUser.value ? userPostsForCurrentUser.value : store.allPosts
+})
 
 // For stats
 const userPosts = computed(() =>
@@ -66,7 +69,6 @@ const suggestedFollowers = computed(() => {
 })
 
 function addPost(content) {
-  // Mock adding post
   const username = store.currentUser.username;
   const newPost = {
     id: Date.now(),
@@ -74,10 +76,17 @@ function addPost(content) {
     content,
     timestamp: new Date()
   }
+
   if (!store.userPosts[username]) {
-    store.userPosts[username] = [];
+    // Initialize with an array containing newPost
+    store.userPosts[username] = [newPost];
+  } else {
+    // Replace the array with a new array containing newPost + existing posts
+    store.userPosts[username] = [newPost, ...store.userPosts[username]];
   }
-  store.userPosts[username].unshift(newPost);
+
+  // Trigger reactivity by replacing the entire object (optional but good practice)
+  store.userPosts = { ...store.userPosts };
 }
 
 function handleFollow(user) {
