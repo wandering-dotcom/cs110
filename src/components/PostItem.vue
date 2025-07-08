@@ -1,29 +1,49 @@
 <template>
-  <div class="post-item">
-    <strong>{{ post.author }}</strong> 
-    <small>{{ formattedDate }}</small>
+  <div class="post">
+    <p><strong>@{{ post.author }}</strong>
+    <small class="timestamp">
+      on {{ formattedDate }} at {{ formattedTime }}
+    </small></p>
     <p>{{ post.content }}</p>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+
 const props = defineProps({
-  post: Object
+  post: {
+    type: Object,
+    required: true
+  }
 })
 
+const date = computed(() => new Date(props.post.timestamp))
+
 const formattedDate = computed(() => {
-  return new Date(props.post.timestamp).toLocaleString()
+  const d = date.value
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+})
+
+const formattedTime = computed(() => {
+  const d = date.value
+  let hours = d.getHours()
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const seconds = String(d.getSeconds()).padStart(2, '0')
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  hours = hours % 12 || 12
+  return `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`
 })
 </script>
 
 <style scoped>
-.post-item {
+.post {
   border-bottom: 1px solid #ccc;
-  padding: 0.5rem 0;
+  padding: 1rem 0;
 }
-small {
-  color: #666;
-  margin-left: 0.5rem;
+
+.timestamp {
+  color: #888;
+  font-size: 0.85rem;
 }
 </style>

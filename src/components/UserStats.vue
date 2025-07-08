@@ -1,11 +1,11 @@
 <template>
   <div class="user-stats">
     <div v-if="user">
-      <p><strong>{{ user.username }}</strong></p>
+      <p><strong>@{{ user.username }}</strong></p>
       <p>Posts: {{ postsCount }}</p>
       <p>Following: {{ followingCount }}</p>
       <p>Followers: {{ followersCount }}</p>
-      <button @click="logout">Log Out</button>
+      <button class="logout-btn" @click="logout">Log Out</button>
     </div>
     <div v-else>
       <RouterLink to="/login">Log In</RouterLink>
@@ -36,17 +36,18 @@ function logout() {
   margin-bottom: 1rem;
 }
 
-button {
+.logout-btn {
   margin-top: 1rem;
-  padding: 0.4rem 0.8rem;
+  padding: 0.5rem 1rem;
   background-color: #e74c3c;
   color: white;
   border: none;
   cursor: pointer;
   border-radius: 4px;
+  font-weight: bold;
 }
 
-button:hover {
+.logout-btn:hover {
   background-color: #c0392b;
 }
 </style>

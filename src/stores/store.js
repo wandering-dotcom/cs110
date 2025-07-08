@@ -21,14 +21,11 @@ export const store = reactive({
     { username: 'user6' }
   ],
 
-  userPosts: {
-    user1: [],
-    user2: [],
-    user3: [],
-    user4: [],
-    user5: [],
-    user6: []
-  },
-  following: {},
-  followers: {}
+  userPosts: reactive({}),
+  following: reactive({}),
+  followers: reactive({})
+})
+
+store.users.forEach(user => {
+  store.userPosts[user.username] = []
 })

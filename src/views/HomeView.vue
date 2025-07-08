@@ -69,7 +69,7 @@ const suggestedFollowers = computed(() => {
 })
 
 function addPost(content) {
-  const username = store.currentUser.username;
+  const username = store.currentUser.username
   const newPost = {
     id: Date.now(),
     author: username,
@@ -77,16 +77,13 @@ function addPost(content) {
     timestamp: new Date()
   }
 
+  // SAFELY mutate, never replace the object
   if (!store.userPosts[username]) {
-    // Initialize with an array containing newPost
-    store.userPosts[username] = [newPost];
-  } else {
-    // Replace the array with a new array containing newPost + existing posts
-    store.userPosts[username] = [newPost, ...store.userPosts[username]];
+    // use Vue.set if needed, or initialize in store.js beforehand
+    store.userPosts[username] = []
   }
 
-  // Trigger reactivity by replacing the entire object (optional but good practice)
-  store.userPosts = { ...store.userPosts };
+  store.userPosts[username].unshift(newPost)
 }
 
 function handleFollow(user) {
