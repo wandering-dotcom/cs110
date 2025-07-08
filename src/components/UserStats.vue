@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { store } from '../stores/store.js'
 
 const props = defineProps({
@@ -29,8 +29,11 @@ const props = defineProps({
   followersCount: Number
 })
 
+const router = useRouter()
+
 function logout() {
   store.currentUser = null
+  router.push('/login')
 }
 </script>
 

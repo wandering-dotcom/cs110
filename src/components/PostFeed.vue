@@ -24,6 +24,6 @@ const postsToShow = props.posts.slice(0, 10)
 
 <style scoped>
 h2 {
-  margin-bottom: 1rem;
+  margin-bottom: 0rem;
 }
 </style>
