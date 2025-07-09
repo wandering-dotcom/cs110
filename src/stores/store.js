@@ -8,7 +8,7 @@ export const store = reactive({
     { id: 1, username: 'alice' },
     { id: 2, username: 'bob' },
     { id: 3, username: 'carol' },
-    { id: 4, username: 'user4' },
+    { id: 4, username: 'rebecca' },
     { id: 5, username: 'user5' },
     { id: 6, username: 'user6' }
   ],
@@ -28,6 +28,20 @@ export const store = reactive({
       author: 'bob',
       content: 'Bob post!',
       timestamp: new Date()
+    }
+  ],
+  'rebecca': [
+    {
+      id: 203,
+      author: 'rebecca',
+      content: 'Hello from Seoul!',
+      timestamp: new Date('2025-09-07T12:30:00')
+    },
+    {
+      id: 204,
+      author: 'rebecca',
+      content: 'Next stop: Nara!',
+      timestamp: new Date('2025-12-07T12:30:00')
     }
   ],
   'hello@gmail.com': [
