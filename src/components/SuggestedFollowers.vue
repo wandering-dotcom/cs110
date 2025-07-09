@@ -5,8 +5,8 @@
       <p>No one to follow right now.</p>
     </div>
     <ul>
-      <li v-for="user in suggestions" :key="user.id">
-        <RouterLink :to="`/profile/${user.id}`">@{{ user.username }}</RouterLink>
+      <li v-for="user in suggestions" :key="user.username">
+        <RouterLink :to="`/profile/${user.username}`">@{{ user.username }}</RouterLink>
         <button v-if="canFollow" @click="followUser(user)">Follow</button>
       </li>
     </ul>

@@ -103,6 +103,7 @@ function submit() {
     }
 
     const newUser = {
+      id: Date.now(),
       email,
       password,
       username: email // generate a username from email
