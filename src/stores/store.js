@@ -134,3 +134,14 @@ function updateAllPosts() {
 }
 
 updateAllPosts()
+export function addPost(content) {
+  const username = store.currentUser?.username
+  if (!username) return
+
+  const newPost = { id: Date.now(), author: username, content, timestamp: new Date() }
+
+  if (!store.userPosts[username]) store.userPosts[username] = []
+  store.userPosts[username].unshift(newPost)
+
+  updateAllPosts()
+}
