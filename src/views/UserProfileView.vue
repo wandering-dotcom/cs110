@@ -18,7 +18,7 @@
             <SuggestedFollowers
             :suggestions="[profileUser]"
             :canFollow="false"
-            title="User Profile"
+            title="Follow this User"
             />
         </div>
     </div>
@@ -39,19 +39,19 @@ import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 const route = useRoute()
 
 const profileUser = computed(() =>
-  store.users.find(u => u.id === Number(route.params.userId))
+  store.users.find(u => u.username === route.params.username)
 )
 
 const userPosts = computed(() =>
-  profileUser.value ? store.userPosts[String(profileUser.value.id)] || [] : []
+  profileUser.value ? store.userPosts[String(profileUser.value.username)] || [] : []
 )
 
 const following = computed(() =>
-  profileUser.value ? store.following[String(profileUser.value.id)] || [] : []
+  profileUser.value ? store.following[String(profileUser.value.username)] || [] : []
 )
 
 const followers = computed(() =>
-  profileUser.value ? store.followers[String(profileUser.value.id)] || [] : []
+  profileUser.value ? store.followers[String(profileUser.value.username)] || [] : []
 )
 </script>
 
