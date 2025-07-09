@@ -1,57 +1,67 @@
 <template>
   <div class="login-form">
-    <!-- Tabs -->
-    <div class="mode-tabs">
-      <button 
-        :class="{ active: !creating }" 
-        @click="creating = false"
-      >
-        Login
-      </button>
-      <button 
-        :class="{ active: creating }" 
-        @click="creating = true"
-      >
-        Sign Up
+    <Logout v-if="store.currentUser" :user="store.currentUser" />
+    
+    <div v-else>
+      <!-- Tabs -->
+      <div class="mode-tabs">
+        <button 
+          :class="{ active: !creating }" 
+          @click="creating = false"
+        >
+          Login
+        </button>
+        <button 
+          :class="{ active: creating }" 
+          @click="creating = true"
+        >
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Email input -->
+      <input 
+        type="text" 
+        v-model="loginInput" 
+        placeholder="Email" 
+        @input="loginTouched = true" 
+      />
+      <!-- Email validations -->
+      <ul>
+        <li style="color:red" v-if="loginEmpty && loginTouched">Enter an email</li>
+        <li style="color:red" v-if="!loginEmpty && !isEmail && loginTouched">Enter a valid email</li>
+        <li style="color:green" v-if="!loginEmpty && isEmail && loginTouched">Email looks good</li>
+      </ul>
+
+      <!-- Password input -->
+      <input 
+        type="password" 
+        v-model="passwordInput" 
+        placeholder="Password" 
+        @input="passwordTouched = true" 
+      />
+      <!-- Password validations -->
+      <ul>
+        <li style="color:red" v-if="passwordEmpty && passwordTouched">Enter a password</li>
+        <template v-else-if="passwordTouched && !passwordValid">
+          <li style="color:red" v-if="!hasNumber">Must include at least one number</li>
+          <li style="color:red" v-if="!hasLetter">Must include at least one letter</li>
+        </template>
+        <li style="color:green" v-if="passwordValid && passwordTouched">Password is valid</li>
+      </ul>
+
+      <!-- Submit button -->
+      <button :disabled="!canSubmit" @click="submit">
+        {{ creating ? 'Create' : 'Log In' }}
       </button>
     </div>
-
-    <input 
-      type="text" 
-      v-model="loginInput" 
-      placeholder="Email" 
-      @input="loginTouched = true" 
-    />
-    <ul>
-      <li style="color:red" v-if="loginEmpty && loginTouched">Enter an email</li>
-      <li style="color:red" v-if="!loginEmpty && !isEmail && loginTouched">Enter a valid email</li>
-      <li style="color:green" v-if="!loginEmpty && isEmail && loginTouched">Email looks good</li>
-    </ul>
-
-    <input 
-      type="password" 
-      v-model="passwordInput" 
-      placeholder="Password" 
-      @input="passwordTouched = true" 
-    />
-    <ul>
-      <li style="color:red" v-if="passwordEmpty && passwordTouched">Enter a password</li>
-      <template v-else-if="passwordTouched && !passwordValid">
-        <li style="color:red" v-if="!hasNumber">Must include at least one number</li>
-        <li style="color:red" v-if="!hasLetter">Must include at least one letter</li>
-      </template>
-      <li style="color:green" v-if="passwordValid && passwordTouched">Password is valid</li>
-    </ul>
-
-    <button :disabled="!canSubmit" @click="submit">
-      {{ creating ? 'Create' : 'Log In' }}
-    </button>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { store } from '../stores/store.js'
+import Logout from '../components/Logout.vue'
 
 const emit = defineEmits(['auth-success'])
 
@@ -98,7 +108,7 @@ function submit() {
       username: email // generate a username from email
     }
     store.users.push(newUser)
-    alert('Account created! You can now log in.')
+    store.currentUser = newUser
 
     // Reset form, stay on login tab
     creating.value = false
@@ -129,22 +139,28 @@ function submit() {
 <style scoped>
 .login-form {
   max-width: 400px;
-  margin: 3rem auto;
+  margin: 5rem auto; /* center vertically and horizontally */
   display: flex;
   flex-direction: column;
+  align-items: stretch; /* ensure children stretch */
   gap: 1rem;
   font-family: sans-serif;
+  padding: 2rem;
+  border: 2px solid #43525c;
+  border-radius: 8px;
+  background-color: rgba(189, 240, 245, 0.672);
 }
 
 .mode-tabs {
   display: flex;
-  gap: 1rem;
+  width: 100%;
+  gap: 0;
   margin-bottom: 1rem;
 }
 
 .mode-tabs button {
   flex: 1;
-  padding: 0.5rem;
+  padding: 0.75rem;
   font-size: 1.1rem;
   cursor: pointer;
   background: none;
@@ -162,18 +178,37 @@ function submit() {
 }
 
 input {
-  padding: 0.5rem;
+  padding: 0.75rem;
   font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 button {
-  padding: 0.5rem;
+  padding: 0.75rem;
   font-size: 1rem;
+  width: 100%;
   cursor: pointer;
+  border: none;
+  background-color: rgba(189, 240, 245, 0.672);
+  color: #333;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #a5e1e8;
 }
 
 button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+ul {
+  padding-left: 1rem;
+  margin: 0;
 }
 </style>

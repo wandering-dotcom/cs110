@@ -15,12 +15,29 @@ export const store = reactive({
 
   userPosts: {
     '1': [
-      { id: 101, authorId: 1, content: 'Hello world', timestamp: new Date() }
-    ],
-    '2': [
-      { id: 102, authorId: 2, content: 'Hi there!', timestamp: new Date() }
-    ],
-    '3': []
+    {
+      id: 201,
+      userId: 'alice',
+      content: 'Alice post!',
+      timestamp: new Date()
+    }
+  ],
+  '2': [
+    {
+      id: 202,
+      author: 'bob',
+      content: 'Bob post!',
+      timestamp: new Date()
+    }
+  ],
+  'hello@gmail.com': [
+    {
+      id: 301,
+      author: 'hello@gmail.com',
+      content: 'Just signed up and saying hello!',
+      timestamp: new Date()
+    }
+  ]
   },
   following: {
     '1': [2],      // alice follows bob
@@ -32,7 +49,20 @@ export const store = reactive({
     '2': [1, 3],   // bob is followed by alice and carol
     '3': [2]       // carol is followed by bob
   },
-
+  globalPosts: [
+  {
+    id: 9991,
+    author: 'guestUser1',
+    content: 'This is a global guest post',
+    timestamp: new Date()
+  },
+  {
+    id: 9992,
+    author: 'guestUser2',
+    content: 'Another global post for the feed',
+    timestamp: new Date()
+  }
+],
   allPosts: []
 })
 
@@ -40,10 +70,10 @@ function updateAllPosts() {
   store.allPosts = Object.values(store.userPosts)
     .flat()
     .map(post => {
-      const author = store.users.find(u => u.id === post.authorId)
+      const author = store.users.find(u => u.username === post.author || u.email === post.author)
       return {
         ...post,
-        authorUsername: author ? author.username : 'Unknown'
+        authorUsername: author ? author.username : post.author
       }
     })
     .sort((a, b) => b.timestamp - a.timestamp)

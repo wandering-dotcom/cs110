@@ -43,7 +43,26 @@ const userPostsForCurrentUser = computed(() => {
 })
 
 const postsToShow = computed(() => {
-  return currentUser.value ? store.allPosts : store.allPosts
+  if (currentUser.value) {
+    const username = currentUser.value.username
+    const followingList = store.following[username] || []
+
+    // Start with the user's own posts
+    let posts = store.userPosts[username] || []
+
+    // Add posts from followed users
+    for (const followedUser of followingList) {
+      const followedPosts = store.userPosts[followedUser] || []
+      posts = posts.concat(followedPosts)
+    }
+
+    // Sort and return up to 10 most recent
+    return posts
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 10)
+  } else {
+    return store.globalPosts.slice(0, 10)
+  }
 })
 
 // For stats
