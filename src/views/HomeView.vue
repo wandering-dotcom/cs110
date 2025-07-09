@@ -7,6 +7,7 @@
         :followingCount="following.length"
         :followersCount="followers.length"
       />
+      <Logout :user="currentUser"/>
     </div>
     
     <div class="center-panel">
@@ -31,6 +32,7 @@ import UserStats from '../components/UserStats.vue'
 import PostInput from '../components/PostInput.vue'
 import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
+import Logout from '../components/Logout.vue'
 
 const currentUser = computed(() => store.currentUser)
 
