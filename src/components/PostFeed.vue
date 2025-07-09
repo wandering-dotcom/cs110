@@ -28,7 +28,6 @@ const postsToShow = props.posts.slice(0, 10)
     background: rgba(189, 240, 245, 0.672);
     margin-bottom: 1rem;
     padding: 0.5rem;
-    color: white;
 }
 h2 {
   margin-bottom: 0rem;

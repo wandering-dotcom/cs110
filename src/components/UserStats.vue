@@ -43,7 +43,6 @@ function logout() {
   padding: 1rem;
   margin-bottom: 1rem;
   background: rgba(189, 240, 245, 0.672);
-  color: white;
 }
 
 .logout-btn {

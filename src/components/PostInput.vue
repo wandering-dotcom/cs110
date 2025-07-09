@@ -26,7 +26,6 @@ function submitPost() {
     background: rgba(189, 240, 245, 0.672);
     margin-bottom: 1rem;
     padding: 0.5rem;
-    color: white;
 }
 textarea {
   width: 100%;

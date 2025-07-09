@@ -29,7 +29,6 @@ nav {
 }
 nav a {
   text-decoration: none;
-  color: white;
   font-weight: bold;
   padding: 0 1rem;
 }

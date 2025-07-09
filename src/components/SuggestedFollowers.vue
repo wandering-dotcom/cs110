@@ -44,7 +44,6 @@ function followUser(user) {
     border: 3px solid #ddd;
     padding: .5rem;
     background: rgba(189, 240, 245, 0.672);
-    color: white;
 }
 button {
   margin-left: 1rem;
