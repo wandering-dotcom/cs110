@@ -74,5 +74,4 @@ const followers = computed(() =>
   flex-direction: column;
   gap: 1rem;
 }
-
 </style>
