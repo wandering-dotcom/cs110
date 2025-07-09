@@ -1,6 +1,6 @@
 <template>
   <div class="post">
-    <p class="header"><strong>@{{ post.author }}</strong>
+    <p><strong>@{{ post.author }}</strong>
     <small class="timestamp">
       on {{ formattedDate }} at {{ formattedTime }}
     </small></p>
