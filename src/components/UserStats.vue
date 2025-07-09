@@ -10,7 +10,6 @@
             <div>{{ followingCount }}</div>
             <div>{{ followersCount }}</div>
         </div>
-        <button class="logout-btn" @click="logout">Log Out</button>
     </div>
     <div v-else>
       <RouterLink to="/login">Log In</RouterLink>
@@ -39,24 +38,10 @@ function logout() {
 
 <style scoped>
 .user-stats {
-  border: 1px solid #ddd;
+  border: 3px solid #ddd;
   padding: 1rem;
   margin-bottom: 1rem;
-}
-
-.logout-btn {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: #43525c;
-  color: white;
-  border: none;
-  cursor: pointer;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.logout-btn:hover {
-  background-color: #c0392b;
+  background: rgba(189, 240, 245, 0.672);
 }
 
 .stats-grid {

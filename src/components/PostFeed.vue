@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="post-feed">
     <h2>Posts</h2>
     <div v-if="posts.length === 0">
       <p>No posts yet.</p>
@@ -19,10 +19,19 @@ const props = defineProps({
   }
 })
 
-const postsToShow = props.posts.slice(0, 10)
+const postsToShow = [...props.posts]
+  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  .slice(0, 10)
 </script>
 
 <style scoped>
+.post-feed {
+    border: 3px solid #ddd;
+    background: rgba(189, 240, 245, 0.672);
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+}
+
 h2 {
   margin-bottom: 0rem;
 }

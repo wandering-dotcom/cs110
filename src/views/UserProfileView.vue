@@ -1,19 +1,30 @@
 <template>
-  <div>
-    <UserStats
-      :user="profileUser"
-      :postsCount="userPosts.length"
-      :followingCount="following.length"
-      :followersCount="followers.length"
-    />
+  <div v-if="profileUser">
+    <div class="user-container">
+        <div class="left-panel">
+            <UserStats
+            :user="profileUser"
+            :postsCount="userPosts.length"
+            :followingCount="following.length"
+            :followersCount="followers.length"
+            />
+        </div>
 
-    <PostFeed :posts="userPosts" />
+        <div class="center-panel">
+            <PostFeed :posts="userPosts" />
+        </div>
 
-    <SuggestedFollowers
-      :suggestions="[profileUser]"
-      :canFollow="false"
-      title="User Profile"
-    />
+        <div class="right-panel">
+            <SuggestedFollowers
+            :suggestions="[profileUser]"
+            :canFollow="false"
+            title="User Profile"
+            />
+        </div>
+    </div>
+  </div>
+  <div v-else>
+    <p>User not found.</p>
   </div>
 </template>
 
@@ -32,14 +43,35 @@ const profileUser = computed(() =>
 )
 
 const userPosts = computed(() =>
-  profileUser.value ? store.userPosts[profileUser.value.username] || [] : []
+  profileUser.value ? store.userPosts[String(profileUser.value.id)] || [] : []
 )
 
 const following = computed(() =>
-  profileUser.value ? store.following[profileUser.value.username] || [] : []
+  profileUser.value ? store.following[String(profileUser.value.id)] || [] : []
 )
 
 const followers = computed(() =>
-  profileUser.value ? store.followers[profileUser.value.username] || [] : []
+  profileUser.value ? store.followers[String(profileUser.value.id)] || [] : []
 )
 </script>
+
+<style scoped>
+.user-container {
+  display: flex;
+  gap: 2rem;
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.left-panel, .right-panel {
+  flex: 1;
+  max-width: 250px; /* limit width */
+}
+
+.center-panel {
+  flex: 2; /* take more space */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+</style>

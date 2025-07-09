@@ -7,6 +7,7 @@
         :followingCount="following.length"
         :followersCount="followers.length"
       />
+      <Logout :user="currentUser"/>
     </div>
     
     <div class="center-panel">
@@ -31,6 +32,7 @@ import UserStats from '../components/UserStats.vue'
 import PostInput from '../components/PostInput.vue'
 import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
+import Logout from '../components/Logout.vue'
 
 const currentUser = computed(() => store.currentUser)
 
@@ -40,9 +42,9 @@ const userPostsForCurrentUser = computed(() => {
   return store.userPosts[currentUser.value.username] || []
 })
 
-const postsToShow = computed(() =>
-  [...store.allPosts].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-)
+const postsToShow = computed(() => {
+  return currentUser.value ? store.allPosts : store.allPosts
+})
 
 // For stats
 const userPosts = computed(() =>
