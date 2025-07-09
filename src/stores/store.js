@@ -4,7 +4,7 @@ export const store = reactive({
   currentUser: null, // e.g. { id: 1, username: 'user1' }
 
   users: [
-    { email: 'hello@gmail.com', password: 'd123', username: 'hello@gmail.com' },
+    { email: 'hello@gmail.com', password: 'd123', id: 0, username: 'hello@gmail.com' },
     { id: 1, username: 'alice' },
     { id: 2, username: 'bob' },
     { id: 3, username: 'carol' },
@@ -51,17 +51,71 @@ export const store = reactive({
   },
   globalPosts: [
   {
-    id: 9991,
+    id: 101,
     author: 'guestUser1',
     content: 'This is a global guest post',
-    timestamp: new Date()
+    timestamp: new Date('2023-07-01T12:30:00')
   },
   {
-    id: 9992,
+    id: 102,
     author: 'guestUser2',
     content: 'Another global post for the feed',
-    timestamp: new Date()
-  }
+    timestamp: new Date('2023-07-01T12:30:01')
+  },
+  {
+    id: 103,
+    author: 'guestUser1',
+    content: 'Man, I am still here.',
+    timestamp: new Date('2023-07-01T12:30:02')
+  },
+  {
+    id: 104,
+    author: 'guestUser1',
+    content: 'It\'s kind of lonely like this',
+    timestamp: new Date('2023-07-01T12:30:03')
+  },
+  {
+    id: 105,
+    author: 'guestUser2',
+    content: 'What am I? chopped liver?',
+    timestamp: new Date('2023-07-01T12:30:04')
+  },
+  {
+    id: 106,
+    author: 'guestUser2',
+    content: 'Good luck finding someone else here. I\'m done.',
+    timestamp: new Date('2023-07-01T12:30:05')
+  },
+  {
+    id: 107,
+    author: 'guestUser1',
+    content: 'wait nooooooooooo',
+    timestamp: new Date('2023-07-01T12:30:06')
+  },
+  {
+    id: 108,
+    author: 'guestUser1',
+    content: 'This is embarrassing.',
+    timestamp: new Date('2023-07-01T12:30:07')
+  },
+  {
+    id: 109,
+    author: 'guestUser1',
+    content: 'You never know something until you\'ve lost it.',
+    timestamp: new Date('2023-07-01T12:30:08')
+  },
+  {
+    id: 110,
+    author: 'guestUser1',
+    content: 'it\'s going to be alright, it\'s going to be alright',
+    timestamp: new Date('2023-07-01T12:30:09')
+  },
+  {
+    id: 111,
+    author: 'guestUser1',
+    content: 'hahahahahahahahahahhahaha, you know what, I\'m the last one standing. King of the world!',
+    timestamp: new Date('2023-07-01T12:30:10')
+  },
 ],
   allPosts: []
 })
