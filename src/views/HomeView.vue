@@ -40,9 +40,9 @@ const userPostsForCurrentUser = computed(() => {
   return store.userPosts[currentUser.value.username] || []
 })
 
-const postsToShow = computed(() =>
-  [...store.allPosts].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-)
+const postsToShow = computed(() => {
+  return currentUser.value ? store.allPosts : store.allPosts
+})
 
 // For stats
 const userPosts = computed(() =>

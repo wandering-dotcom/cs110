@@ -3,15 +3,6 @@ import { reactive } from 'vue'
 export const store = reactive({
   currentUser: null, // e.g. { id: 1, username: 'user1' }
 
-  allPosts: [
-    {
-      id: 1,
-      author: 1, // user id instead of username
-      content: 'Welcome to the app!',
-      timestamp: new Date()
-    }
-  ],
-
   users: [
     { id: 1, username: 'alice' },
     { id: 2, username: 'bob' },
@@ -47,6 +38,13 @@ export const store = reactive({
 function updateAllPosts() {
   store.allPosts = Object.values(store.userPosts)
     .flat()
+    .map(post => {
+      const author = store.users.find(u => u.id === post.authorId)
+      return {
+        ...post,
+        authorUsername: author ? author.username : 'Unknown'
+      }
+    })
     .sort((a, b) => b.timestamp - a.timestamp)
 }
 

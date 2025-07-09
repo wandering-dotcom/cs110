@@ -7,7 +7,6 @@
             :postsCount="userPosts.length"
             :followingCount="following.length"
             :followersCount="followers.length"
-            :canLogout="false"
             />
         </div>
 
@@ -44,15 +43,15 @@ const profileUser = computed(() =>
 )
 
 const userPosts = computed(() =>
-  profileUser.value ? store.userPosts[profileUser.value.username] || [] : []
+  profileUser.value ? store.userPosts[String(profileUser.value.id)] || [] : []
 )
 
 const following = computed(() =>
-  profileUser.value ? store.following[profileUser.value.username] || [] : []
+  profileUser.value ? store.following[String(profileUser.value.id)] || [] : []
 )
 
 const followers = computed(() =>
-  profileUser.value ? store.followers[profileUser.value.username] || [] : []
+  profileUser.value ? store.followers[String(profileUser.value.id)] || [] : []
 )
 </script>
 

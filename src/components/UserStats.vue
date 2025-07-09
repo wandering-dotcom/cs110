@@ -10,7 +10,7 @@
             <div>{{ followingCount }}</div>
             <div>{{ followersCount }}</div>
         </div>
-        <button class="logout-btn" v-if="canLogout" @click="logout">Log Out</button>
+        <button class="logout-btn" @click="logout">Log Out</button>
     </div>
     <div v-else>
       <RouterLink to="/login">Log In</RouterLink>
