@@ -1,12 +1,12 @@
 <template>
-  <div>
+  <div class="suggested-followers">
     <h2>{{ title }}</h2>
     <div v-if="suggestions.length === 0">
       <p>No one to follow right now.</p>
     </div>
     <ul>
       <li v-for="user in suggestions" :key="user.id">
-        <RouterLink :to="`/users/${user.id}`">{{ user.username }}</RouterLink>
+        <RouterLink :to="`/profile/${user.id}`">@{{ user.username }}</RouterLink>
         <button v-if="canFollow" @click="followUser(user)">Follow</button>
       </li>
     </ul>
@@ -40,9 +40,21 @@ function followUser(user) {
 </script>
 
 <style scoped>
+.suggested-followers {
+    border: 3px solid #ddd;
+    padding: .5rem;
+    background: rgba(189, 240, 245, 0.672);
+    color: white;
+}
 button {
   margin-left: 1rem;
   cursor: pointer;
+  background-color: #43525c;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
 }
 ul {
   list-style: none;

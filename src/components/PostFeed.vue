@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="post-feed">
     <h2>Posts</h2>
     <div v-if="posts.length === 0">
       <p>No posts yet.</p>
@@ -23,6 +23,13 @@ const postsToShow = props.posts.slice(0, 10)
 </script>
 
 <style scoped>
+.post-feed {
+    border: 3px solid #ddd;
+    background: rgba(189, 240, 245, 0.672);
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    color: white;
+}
 h2 {
   margin-bottom: 0rem;
 }

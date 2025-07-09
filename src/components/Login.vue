@@ -118,15 +118,15 @@ function submit() {
   font-size: 1.1rem;
   cursor: pointer;
   background: none;
-  border: 2px solid #1c7198;
+  border: 2px solid rgba(189, 240, 245, 0.672);
   border-bottom: none;
-  color: #1c7198;
+  color: rgba(189, 240, 245, 0.672);
   border-radius: 5px 5px 0 0;
   transition: background-color 0.2s ease;
 }
 
 .mode-tabs button.active {
-  background-color: #1c7198;
+  background-color: rgba(189, 240, 245, 0.672);
   color: white;
   cursor: default;
 }

@@ -43,7 +43,7 @@ const formattedTime = computed(() => {
 }
 
 .timestamp {
-  color: #888;
+  color: #ffffff;
   font-size: 0.85rem;
 }
 </style>

@@ -39,9 +39,11 @@ function logout() {
 
 <style scoped>
 .user-stats {
-  border: 1px solid #ddd;
+  border: 3px solid #ddd;
   padding: 1rem;
   margin-bottom: 1rem;
+  background: rgba(189, 240, 245, 0.672);
+  color: white;
 }
 
 .logout-btn {

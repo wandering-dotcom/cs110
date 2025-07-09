@@ -15,7 +15,7 @@
 
 <style scoped>
 header {
-  background: #1c7198;
+  background: rgba(189, 240, 245, 0.672);
   padding: 1rem;
   position: fixed;
   top: 0;

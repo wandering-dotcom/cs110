@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="profileUser">
     <UserStats
       :user="profileUser"
       :postsCount="userPosts.length"
@@ -15,6 +15,9 @@
       title="User Profile"
     />
   </div>
+  <div v-else>
+    <p>User not found.</p>
+  </div>
 </template>
 
 <script setup>
@@ -28,7 +31,7 @@ import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 const route = useRoute()
 
 const profileUser = computed(() =>
-  store.users.find(u => u.id === Number(route.params.userId))
+  store.users.find(u => u.username === route.params.username)
 )
 
 const userPosts = computed(() =>

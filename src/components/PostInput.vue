@@ -1,7 +1,7 @@
 <template>
   <div class="post-input">
-    <h3>Create a Post</h3>
-    <textarea v-model="content" rows="4" placeholder="What's on your mind?"></textarea>
+    <h3>Create a new Post</h3>
+    <textarea v-model="content" rows="1"></textarea>
     <button :disabled="content.trim() === ''" @click="submitPost">Post</button>
   </div>
 </template>
@@ -22,18 +22,28 @@ function submitPost() {
 
 <style scoped>
 .post-input {
-  margin-bottom: 2rem;
+    border: 3px solid #ddd;
+    background: rgba(189, 240, 245, 0.672);
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    color: white;
 }
 textarea {
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
+  margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
 button {
+  margin-top: 0rem;
   padding: 0.5rem 1rem;
-  font-size: 1rem;
+  background-color: #43525c;
+  color: white;
+  border: none;
   cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
 }
 button:disabled {
   background: #ccc;
