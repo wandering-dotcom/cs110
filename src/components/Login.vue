@@ -81,18 +81,48 @@ const canSubmit = computed(() =>
 function submit() {
   if (!canSubmit.value) return
 
-  const user = {
-    username: loginInput.value
+  const email = loginInput.value.trim()
+  const password = passwordInput.value
+
+  if (creating.value) {
+    // Sign Up
+    const existingUser = store.users.find(u => u.email === email)
+    if (existingUser) {
+      alert('Account already exists with that email.')
+      return
+    }
+
+    const newUser = {
+      email,
+      password,
+      username: email // generate a username from email
+    }
+    store.users.push(newUser)
+    alert('Account created! You can now log in.')
+
+    // Reset form, stay on login tab
+    creating.value = false
+    loginInput.value = ''
+    passwordInput.value = ''
+    loginTouched.value = false
+    passwordTouched.value = false
+  } else {
+    // Log In
+    const user = store.users.find(u => u.email === email && u.password === password)
+    if (!user) {
+      alert('Invalid email or password.')
+      return
+    }
+
+    store.currentUser = user
+    emit('auth-success', user)
+
+    // Reset form
+    loginInput.value = ''
+    passwordInput.value = ''
+    loginTouched.value = false
+    passwordTouched.value = false
   }
-
-  loginInput.value = ''
-  passwordInput.value = ''
-  loginTouched.value = false
-  passwordTouched.value = false
-
-  store.currentUser = user
-
-  emit('auth-success', user)
 }
 </script>
 

@@ -4,6 +4,7 @@ export const store = reactive({
   currentUser: null, // e.g. { id: 1, username: 'user1' }
 
   users: [
+    { email: 'hello@gmail.com', password: 'd123', username: 'hello@gmail.com' },
     { id: 1, username: 'alice' },
     { id: 2, username: 'bob' },
     { id: 3, username: 'carol' },

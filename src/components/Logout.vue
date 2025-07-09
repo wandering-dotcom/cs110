@@ -9,6 +9,7 @@
 
 <script setup>
 import { RouterLink, useRouter } from 'vue-router'
+import { store } from '../stores/store.js'
 const router = useRouter()
 
 const props = defineProps({

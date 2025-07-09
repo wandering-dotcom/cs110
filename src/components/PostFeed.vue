@@ -19,7 +19,9 @@ const props = defineProps({
   }
 })
 
-const postsToShow = props.posts.slice(0, 10)
+const postsToShow = [...props.posts]
+  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  .slice(0, 10)
 </script>
 
 <style scoped>
@@ -29,6 +31,7 @@ const postsToShow = props.posts.slice(0, 10)
     margin-bottom: 1rem;
     padding: 0.5rem;
 }
+
 h2 {
   margin-bottom: 0rem;
 }
