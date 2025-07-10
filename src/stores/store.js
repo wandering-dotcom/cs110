@@ -40,7 +40,7 @@ export const store = reactive({
     {
       id: 204,
       author: 'rebecca',
-      content: 'Next stop: Nara!',
+      content: 'Next stop: Busan!',
       timestamp: new Date('2025-12-07T12:30:00')
     }
   ],
