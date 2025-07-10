@@ -7,7 +7,6 @@
         :followingCount="following.length"
         :followersCount="followers.length"
       />
-      <!-- <Logout :user="currentUser"/> -->
     </div>
     
     <div class="center-panel">
