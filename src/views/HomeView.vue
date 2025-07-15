@@ -48,7 +48,7 @@ const postsToShow = computed(() => {
     // Start with the user's own posts
     let posts = store.userPosts[username] || []
 
-    // Add posts from followed users
+    // Add posts from followed users (figuring it out)
     for (const followedUser of followingList) {
       const followedPosts = store.userPosts[followedUser] || []
       posts = posts.concat(followedPosts)
@@ -56,7 +56,7 @@ const postsToShow = computed(() => {
 
     // Copy, sort by latest first, and take up to 10
     return posts
-      .slice()  // <-- copy so original arrays don't get sorted
+      .slice()  // copy so original arrays don't get sorted
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .slice(0, 10)
   } else {
