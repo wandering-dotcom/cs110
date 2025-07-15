@@ -62,13 +62,8 @@
 import { ref, computed } from 'vue'
 import { store } from '../stores/store.js'
 import Logout from '../components/Logout.vue'
-import { auth } from '../firebaseResources.js'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebaseResources/auth'
 import emitter from '../eventBus'
 import { login, register } from '../services/authService'
-
-// inside your `submit()` function after successful login:
-emitter.emit('auth-success', userCredential.user)
 
 const creating = ref(false)
 const loginInput = ref('')

@@ -1,18 +1,20 @@
-import { auth } from '../firebase'
+import { auth } from '../firebaseResources.js'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut
-} from 'firebaseResources/auth'
+} from 'firebase/auth'
 
 export async function register(email, password) {
-  return await createUserWithEmailAndPassword(auth, email, password)
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+  return userCredential.user
 }
 
 export async function login(email, password) {
-  return await signInWithEmailAndPassword(auth, email, password)
+  const userCredential = await signInWithEmailAndPassword(auth, email, password)
+  return userCredential.user
 }
 
 export async function logout() {
-  return await signOut(auth)
+  await signOut(auth)
 }
