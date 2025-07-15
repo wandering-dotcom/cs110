@@ -29,11 +29,6 @@ const props = defineProps({
 })
 
 const router = useRouter()
-
-function logout() {
-  store.currentUser = null
-  router.push('/login')
-}
 </script>
 
 <style scoped>

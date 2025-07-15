@@ -7,17 +7,15 @@
 
 <script setup>
 import { logout } from '../services/authService'
+import { store } from '../stores/store.js'
 import emitter from '../eventBus'
 
 const props = defineProps({ user: Object })
 
 async function handleLogout() {
-  try {
-    await logout()
-    emitter.emit('logout')
-  } catch (error) {
-    alert('Logout failed: ' + error.message)
-  }
+  await logout()
+  store.currentUser = null
+  emitter.emit('logout')
 }
 </script>
 

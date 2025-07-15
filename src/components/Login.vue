@@ -64,6 +64,8 @@ import { store } from '../stores/store.js'
 import Logout from '../components/Logout.vue'
 import emitter from '../eventBus'
 import { login, register } from '../services/authService'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { firestore } from '../firebaseResources.js'
 
 const creating = ref(false)
 const loginInput = ref('')
@@ -92,60 +94,74 @@ function extractUsernameFromEmail(email) {
 }
 
 async function submit() {
-  if (!canSubmit.value) return
+  if (!canSubmit.value) return;
 
-  const email = loginInput.value.trim()
-  const password = passwordInput.value
-  let user
+  const email = loginInput.value.trim();
+  const password = passwordInput.value;
 
+  let user;
   try {
     if (creating.value) {
-      // Firebase register
-      user = await register(email, password)
+      // Register the user with Firebase Auth
+      user = await register(email, password);
 
-      // Add to local mock store
+      const userId = user.uid;
+
+      // Create user document in Firestore
+      const userDocRef = doc(firestore, 'users', userId);
+      await setDoc(userDocRef, {
+        email: user.email,
+        feed: [],
+        followers: [],
+        following: [],
+        posts: []
+      });
+
+      // Store in local mock store
       const newStoreUser = {
-        id: Date.now(),
-        email,
-        password,
-        username: extractUsernameFromEmail(email)
-      }
+        uid: userId,
+        email: user.email,
+        username: extractUsernameFromEmail(user.email)
+      };
 
-      store.users.push(newStoreUser)
-      store.userPosts[newStoreUser.username] = []
-      store.following[newStoreUser.username] = []
-      store.followers[newStoreUser.username] = []
+      store.users.push(newStoreUser);
+      store.userPosts[newStoreUser.username] = [];
+      store.following[newStoreUser.username] = [];
+      store.followers[newStoreUser.username] = [];
 
-      store.currentUser = {
-        ...user,
-        username: newStoreUser.username
-      }
+      store.currentUser = newStoreUser;
+
     } else {
-      // Firebase login
-      user = await login(email, password)
-
-      // Match with local store
-      const matchedUser = store.users.find(u => u.email === user.email)
-
-      if (!matchedUser) {
-        alert('User not found in store. Try signing up first.')
+      // Firebase login via Auth
+      user = await login(email, password);
+      
+      // Now validate via Firestore
+      const userDocRef = doc(firestore, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        alert('No user record found in Firestore. Please sign up.')
         return
       }
-
+      
+      const userData = userDoc.data()
       store.currentUser = {
-        ...user,
-        username: matchedUser.username
+        uid: user.uid,
+        email: user.email,
+        ...userData
       }
     }
 
-    emitter.emit('auth-success', store.currentUser)
+    emitter.emit('auth-success', store.currentUser);
 
-    loginInput.value = ''
-    passwordInput.value = ''
-    loginTouched.value = false
-    passwordTouched.value = false
+    loginInput.value = '';
+    passwordInput.value = '';
+    loginTouched.value = false;
+    passwordTouched.value = false;
+
   } catch (error) {
-    alert(error.message)
+    console.error(error);
+    alert(error.message);
   }
 }
 </script>
