@@ -3,7 +3,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut
-} from 'firebase/auth'
+} from 'firebaseResources/auth'
 
 export async function register(email, password) {
   return await createUserWithEmailAndPassword(auth, email, password)
