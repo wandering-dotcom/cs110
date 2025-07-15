@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { store } from '../stores/store.js'
 import Logout from '../components/Logout.vue'
 import emitter from '../eventBus'
@@ -73,47 +73,81 @@ const loginTouched = ref(false)
 const passwordTouched = ref(false)
 
 const loginEmpty = computed(() => loginInput.value.trim().length === 0)
-
-const isEmail = computed(() => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(loginInput.value.trim())
-})
-
+const isEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginInput.value.trim()))
 const passwordEmpty = computed(() => passwordInput.value.length === 0)
 const hasNumber = computed(() => /\d/.test(passwordInput.value))
 const hasLetter = computed(() => /[a-zA-Z]/.test(passwordInput.value))
 const passwordValid = computed(() => hasNumber.value && hasLetter.value)
-
 const canSubmit = computed(() => !loginEmpty.value && isEmail.value && !passwordEmpty.value && passwordValid.value)
+
+watch(creating, () => {
+  loginInput.value = ''
+  passwordInput.value = ''
+  loginTouched.value = false
+  passwordTouched.value = false
+})
+
+function extractUsernameFromEmail(email) {
+  return email.split('@')[0]
+}
 
 async function submit() {
   if (!canSubmit.value) return
 
   const email = loginInput.value.trim()
   const password = passwordInput.value
+  let user
 
   try {
-    let userCredential
-
     if (creating.value) {
-      userCredential = await register(email, password)
+      // Firebase register
+      user = await register(email, password)
+
+      // Add to local mock store
+      const newStoreUser = {
+        id: Date.now(),
+        email,
+        password,
+        username: extractUsernameFromEmail(email)
+      }
+
+      store.users.push(newStoreUser)
+      store.userPosts[newStoreUser.username] = []
+      store.following[newStoreUser.username] = []
+      store.followers[newStoreUser.username] = []
+
+      store.currentUser = {
+        ...user,
+        username: newStoreUser.username
+      }
     } else {
-      userCredential = await login(email, password)
+      // Firebase login
+      user = await login(email, password)
+
+      // Match with local store
+      const matchedUser = store.users.find(u => u.email === user.email)
+
+      if (!matchedUser) {
+        alert('User not found in store. Try signing up first.')
+        return
+      }
+
+      store.currentUser = {
+        ...user,
+        username: matchedUser.username
+      }
     }
 
-    store.currentUser = userCredential.user
-    emitter.emit('auth-success', userCredential.user)
+    emitter.emit('auth-success', store.currentUser)
 
     loginInput.value = ''
     passwordInput.value = ''
     loginTouched.value = false
     passwordTouched.value = false
-    creating.value = false
   } catch (error) {
     alert(error.message)
   }
 }
-
 </script>
 
 <style scoped>

@@ -33,20 +33,25 @@ import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 
 const currentUser = computed(() => store.currentUser)
+const username = computed(() => currentUser.value?.username || '')
+
+// trying to see what it's trying to load
+console.log('Loading home for user:', username.value)
+console.log('Posts for user:', store.userPosts[username.value])
+console.log('Following:', store.following[username.value])
 
 // Show user’s posts if logged in, else global posts
 const userPostsForCurrentUser = computed(() => {
-  if (!currentUser.value) return []
-  return store.userPosts[currentUser.value.username] || []
+  if (!username.value) return []
+  return store.userPosts[username.value] || []
 })
 
 const postsToShow = computed(() => {
-  if (currentUser.value) {
-    const username = currentUser.value.username
-    const followingList = store.following[username] || []
+  if (username.value) {
+    const followingList = store.following[username.value] || []
 
     // Start with the user's own posts
-    let posts = store.userPosts[username] || []
+    let posts = store.userPosts[username.value] || []
 
     // Add posts from followed users (figuring it out)
     for (const followedUser of followingList) {
@@ -70,13 +75,13 @@ const postsToShow = computed(() => {
 
 // For stats
 const userPosts = computed(() =>
-  currentUser.value ? store.userPosts[currentUser.value.username] || [] : []
+  username.value ? store.userPosts[username.value] || [] : []
 )
 const following = computed(() =>
-  currentUser.value ? store.following[currentUser.value.username] || [] : []
+  username.value ? store.following[username.value] || [] : []
 )
 const followers = computed(() =>
-  currentUser.value ? store.followers[currentUser.value.username] || [] : []
+  username.value ? store.followers[username.value] || [] : []
 )
 
 // Suggested followers - users not followed yet, or 5 random users if logged out
@@ -107,7 +112,6 @@ function shuffle(array) {
 }
 
 function addPost(content) {
-  const username = store.currentUser.username;
   const newPost = {
     id: Date.now(),
     author: username,
@@ -119,25 +123,25 @@ function addPost(content) {
   store.allPosts = [newPost, ...store.allPosts];
 
   // Add to user's own posts
-  if (!store.userPosts[username]) {
-    store.userPosts[username] = [];
+  if (!store.userPosts[username.value]) {
+    store.userPosts[username.value] = [];
   }
-  store.userPosts[username].unshift(newPost);
+  store.userPosts[username.value].unshift(newPost);
 }
 
 function handleFollow(user) {
   // Add to following and followers lists mock
-  if (!store.following[currentUser.value.username]) {
-    store.following[currentUser.value.username] = []
+  if (!store.following[username.value]) {
+    store.following[username.value] = []
   }
   if (!store.followers[user.username]) {
     store.followers[user.username] = []
   }
-  if (!store.following[currentUser.value.username].includes(user.username)) {
-    store.following[currentUser.value.username].push(user.username)
+  if (!store.following[username.value].includes(user.username)) {
+    store.following[username.value].push(user.username)
   }
-  if (!store.followers[user.username].includes(currentUser.value.username)) {
-    store.followers[user.username].push(currentUser.value.username)
+  if (!store.followers[user.username].includes(username.value)) {
+    store.followers[user.username].push(username.value)
   }
 }
 </script>

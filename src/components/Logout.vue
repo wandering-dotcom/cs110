@@ -1,9 +1,7 @@
 <template>
   <div v-if="user">
-    <div class="out">
-      <p><strong>@{{ user.username || user.email }}</strong></p>
-      <button class="logout-btn" @click="handleLogout">Log Out</button>
-    </div>
+    <p><strong>@{{ user.username || user.email }}</strong></p>
+    <button class="logout-btn" @click="handleLogout">Log Out</button>
   </div>
 </template>
 
@@ -11,14 +9,12 @@
 import { logout } from '../services/authService'
 import emitter from '../eventBus'
 
-const props = defineProps({
-  user: Object
-})
+const props = defineProps({ user: Object })
 
 async function handleLogout() {
   try {
     await logout()
-    emitter.emit('logout') // Fire event
+    emitter.emit('logout')
   } catch (error) {
     alert('Logout failed: ' + error.message)
   }
