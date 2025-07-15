@@ -65,6 +65,7 @@ import Logout from '../components/Logout.vue'
 import { auth } from '../firebase'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import emitter from '../eventBus'
+import { login, register } from '../services/authService'
 
 // inside your `submit()` function after successful login:
 emitter.emit('auth-success', userCredential.user)
@@ -88,58 +89,6 @@ const hasNumber = computed(() => /\d/.test(passwordInput.value))
 const hasLetter = computed(() => /[a-zA-Z]/.test(passwordInput.value))
 const passwordValid = computed(() => hasNumber.value && hasLetter.value)
 
-// const canSubmit = computed(() =>
-//   !loginEmpty.value && isEmail.value && !passwordEmpty.value && passwordValid.value
-// )
-
-// function submit() {
-//   if (!canSubmit.value) return
-
-//   const email = loginInput.value.trim()
-//   const password = passwordInput.value
-
-//   if (creating.value) {
-//     // Sign Up
-//     const existingUser = store.users.find(u => u.email === email)
-//     if (existingUser) {
-//       alert('Account already exists with that email.')
-//       return
-//     }
-
-//     const newUser = {
-//       id: Date.now(),
-//       email,
-//       password,
-//       username: email // generate a username from email
-//     }
-//     store.users.push(newUser)
-//     store.currentUser = newUser
-
-//     // Reset form, stay on login tab
-//     creating.value = false
-//     loginInput.value = ''
-//     passwordInput.value = ''
-//     loginTouched.value = false
-//     passwordTouched.value = false
-//   } else {
-//     // Log In
-//     const user = store.users.find(u => u.email === email && u.password === password)
-//     if (!user) {
-//       alert('Invalid email or password.')
-//       return
-//     }
-
-//     store.currentUser = user
-//     emit('auth-success', user)
-
-//     // Reset form
-//     loginInput.value = ''
-//     passwordInput.value = ''
-//     loginTouched.value = false
-//     passwordTouched.value = false
-//   }
-// }
-
 const canSubmit = computed(() => !loginEmpty.value && isEmail.value && !passwordEmpty.value && passwordValid.value)
 
 async function submit() {
@@ -152,15 +101,14 @@ async function submit() {
     let userCredential
 
     if (creating.value) {
-      userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      userCredential = await register(email, password)
     } else {
-      userCredential = await signInWithEmailAndPassword(auth, email, password)
+      userCredential = await login(email, password)
     }
 
     store.currentUser = userCredential.user
-    emit('auth-success', userCredential.user)
+    emitter.emit('auth-success', userCredential.user)
 
-    // Reset form
     loginInput.value = ''
     passwordInput.value = ''
     loginTouched.value = false
@@ -169,7 +117,6 @@ async function submit() {
   } catch (error) {
     alert(error.message)
   }
-
 }
 
 </script>

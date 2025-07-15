@@ -13,10 +13,12 @@ function goHome(user) {
 
 onMounted(() => {
   emitter.on('auth-success', goHome)
+  emitter.on('logout', handleLogout)
 })
 
 onUnmounted(() => {
   emitter.off('auth-success', goHome)
+  emitter.off('logout', handleLogout)
 })
 </script>
 
