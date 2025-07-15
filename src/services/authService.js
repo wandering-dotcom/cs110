@@ -4,6 +4,26 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from 'firebase/auth'
+import {
+    doc,
+    setDoc,
+    getDoc
+} from 'firebase/firestore'
+
+async function createUserDocIfNotExists(user) {
+  const userRef = doc(firestore, 'users', user.uid)
+  const docSnap = await getDoc(userRef)
+
+  if (!docSnap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      feed: [],
+      followers: [],
+      following: [],
+      posts: []
+    })
+  }
+}
 
 export async function register(email, password) {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password)
