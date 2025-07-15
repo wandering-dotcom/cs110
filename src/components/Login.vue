@@ -62,8 +62,8 @@
 import { ref, computed } from 'vue'
 import { store } from '../stores/store.js'
 import Logout from '../components/Logout.vue'
-import { auth } from '../firebase'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../firebaseResources.js'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebaseResources/auth'
 import emitter from '../eventBus'
 import { login, register } from '../services/authService'
 
