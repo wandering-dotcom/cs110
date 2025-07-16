@@ -1,7 +1,7 @@
 <template>
   <div class="post-input">
     <h3>Create a new Post</h3>
-    <textarea v-model="content" rows="2" placeholder="What's on your mind?"></textarea>
+    <textarea v-model="content" rows="2" placeholder="Brevity is the soul of wit, but we need your post to have text in it."></textarea>
     <button :disabled="content.trim() === ''" @click="submitPost">Post</button>
   </div>
 </template>
