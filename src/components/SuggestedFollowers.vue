@@ -1,20 +1,19 @@
 <template>
   <div class="suggested-followers">
-    <h2>{{ title }}</h2>
-    <div v-if="suggestions.length === 0">
-      <p>No one to follow right now.</p>
-    </div>
+    <h2>Who to Follow</h2>
     <ul>
-      <li v-for="user in suggestions" :key="user.username">
-        <RouterLink :to="`/profile/${user.username}`">@{{ user.username }}</RouterLink>
-        <button v-if="canFollow" @click="followUser(user)">Follow</button>
+      <li v-if="suggestions.length === 0">No suggestions right now.</li>
+      <li v-for="user in suggestions" :key="user.uid">
+        <RouterLink :to="`/profile/${user.uid}`">
+          @{{ user.username || user.email }}
+        </RouterLink>
+        <button v-if="canFollow" @click="$emit('follow', user)">Follow</button>
       </li>
     </ul>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 const props = defineProps({
@@ -25,18 +24,8 @@ const props = defineProps({
   canFollow: {
     type: Boolean,
     default: false
-  },
-  title: {
-    type: String,
-    default: 'Who to Follow'
   }
 })
-
-const emit = defineEmits(['follow'])
-
-function followUser(user) {
-  emit('follow', user)
-}
 </script>
 
 <style scoped>

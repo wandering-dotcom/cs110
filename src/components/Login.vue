@@ -103,33 +103,34 @@ async function submit() {
   try {
     if (creating.value) {
       // Register the user with Firebase Auth
-      user = await register(email, password);
+      user = await register(email, password)
 
-      const userId = user.uid;
+      const userId = user.uid
+      const username = extractUsernameFromEmail(user.email) // ✅ ADD THIS LINE
 
-      // Create user document in Firestore
-      const userDocRef = doc(firestore, 'users', userId);
+      const userDocRef = doc(firestore, 'users', userId)
       await setDoc(userDocRef, {
         email: user.email,
+        username,
         feed: [],
         followers: [],
         following: [],
         posts: []
-      });
+      })
 
-      // Store in local mock store
-      const newStoreUser = {
+      const freshUserDoc = await getDoc(userDocRef)
+
+      if (!freshUserDoc.exists()) {
+        alert('Failed to save user record. Try again.')
+        return
+      }
+
+      const userData = freshUserDoc.data()
+      store.currentUser = {
         uid: userId,
         email: user.email,
-        username: extractUsernameFromEmail(user.email)
-      };
-
-      store.users.push(newStoreUser);
-      store.userPosts[newStoreUser.username] = [];
-      store.following[newStoreUser.username] = [];
-      store.followers[newStoreUser.username] = [];
-
-      store.currentUser = newStoreUser;
+        ...userData
+      }
 
     } else {
       // Firebase login via Auth

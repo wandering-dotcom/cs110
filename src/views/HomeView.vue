@@ -33,8 +33,9 @@ import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 
 import { fetchUserById } from '../services/userService.js'
-import { followUser, fetchSuggestedUsers } from '../services/followService.js'
+import { followUser, unfollowUser } from '../services/followService.js'
 import { watchFeedPosts } from '../services/feedService.js'
+import { createPost } from '../services/postService.js'
 import {
   collection,
   addDoc,
@@ -98,18 +99,21 @@ async function handleFollow(targetUser) {
 }
 
 async function addPost(content) {
-  const postRef = await addDoc(collection(firestore, 'posts'), {
-    authorId: currentUser.value.uid,
-    content,
-    timestamp: serverTimestamp()
-  })
+  try {
+    // Use the username from currentUser (make sure it's loaded)
+    const username = currentUser.value.username || 'Unknown'
 
-  // Optional: Update user doc with post ID reference
-  await updateDoc(doc(firestore, 'users', currentUser.value.uid), {
-    posts: arrayUnion(postRef.id)
-  })
+    // Create post with the service that sets username properly
+    const postId = await createPost(currentUser.value.uid, content, username)
 
-  userStats.value.postsCount++
+    // Update local stats
+    userStats.value.postsCount++
+
+    // Optionally, you might want to refresh the feed or fetch the new post explicitly here
+  } catch (err) {
+    console.error('Failed to create post:', err)
+    alert('Failed to create post: ' + err.message)
+  }
 }
 
 onMounted(async () => {

@@ -1,7 +1,7 @@
 <template>
   <div class="post-input">
     <h3>Create a new Post</h3>
-    <textarea v-model="content" rows="1"></textarea>
+    <textarea v-model="content" rows="2" placeholder="What's on your mind?"></textarea>
     <button :disabled="content.trim() === ''" @click="submitPost">Post</button>
   </div>
 </template>
@@ -13,9 +13,9 @@ const emit = defineEmits(['new-post'])
 const content = ref('')
 
 function submitPost() {
-  if (content.value.trim() === '') return
-
-  emit('new-post', content.value.trim())
+  const trimmed = content.value.trim()
+  if (!trimmed) return
+  emit('new-post', trimmed)
   content.value = ''
 }
 </script>
