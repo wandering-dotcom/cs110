@@ -36,14 +36,7 @@ import { fetchUserById } from '../services/userService.js'
 import { followUser, unfollowUser } from '../services/followService.js'
 import { watchFeedPosts } from '../services/feedService.js'
 import { createPost } from '../services/postService.js'
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  arrayUnion,
-  serverTimestamp,
-} from 'firebase/firestore'
+import { fetchSuggestedUsers } from '../services/followService.js'
 import { firestore } from '../firebaseResources.js'
 
 // Reactive state
@@ -79,11 +72,15 @@ function startPostFeedListener() {
 }
 
 async function loadSuggestions() {
-  if (!currentUser.value) return
-  suggestedFollowers.value = await fetchSuggestedUsers(
-    currentUser.value.uid,
-    currentUser.value.following || []
-  )
+  if (currentUser.value) {
+    suggestedFollowers.value = await fetchSuggestedUsers(
+      currentUser.value.uid,
+      currentUser.value.following || []
+    )
+  } else {
+    // No user logged in → show 5 random users without exclusions
+    suggestedFollowers.value = await fetchSuggestedUsers()
+  }
 }
 
 async function handleFollow(targetUser) {
