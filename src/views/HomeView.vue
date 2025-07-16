@@ -3,14 +3,14 @@
     <div class="left-panel">
       <UserStats
         :user="currentUser"
-        :postsCount="userPosts.length"
-        :followingCount="following.length"
-        :followersCount="followers.length"
+        :postsCount="userStats.postsCount"
+        :followingCount="userStats.followingCount"
+        :followersCount="userStats.followersCount"
       />
     </div>
     
     <div class="center-panel">
-      <PostFeed :posts="postsToShow" />
+      <PostFeed :posts="feedPosts" />
       <PostInput v-if="currentUser" @new-post="addPost" />
     </div>
     
@@ -25,121 +25,121 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, onMounted, watchEffect, onUnmounted } from 'vue'
 import { store } from '../stores/store.js'
 import UserStats from '../components/UserStats.vue'
 import PostInput from '../components/PostInput.vue'
 import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 
-const currentUser = computed(() => store.currentUser)
+import { fetchUserById } from '../services/userService.js'
+import { followUser, unfollowUser } from '../services/followService.js'
+import { watchFeedPosts } from '../services/feedService.js'
+import { fetchFeedPosts } from '../services/feedService.js'
+import { createPost } from '../services/postService.js'
+import { fetchSuggestedUsers } from '../services/followService.js'
+import { firestore } from '../firebaseResources.js'
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
 
-// Show user’s posts if logged in, else global posts
-const userPostsForCurrentUser = computed(() => {
-  if (!currentUser.value) return []
-  return store.userPosts[currentUser.value.username] || []
-})
+// Reactive state
+const currentUser = ref(null)
+const userStats = ref({ postsCount: 0, followingCount: 0, followersCount: 0 })
+const feedPosts = ref([])
+const suggestedFollowers = ref([])
+let unsubscribeFeed = null
 
-const postsToShow = computed(() => {
-  if (currentUser.value) {
-    const username = currentUser.value.username
-    const followingList = store.following[username] || []
+// Load user info and feed
+async function loadCurrentUser() {
+  const uid = store.currentUser?.uid
+  if (!uid) return
 
-    // Start with the user's own posts
-    let posts = store.userPosts[username] || []
+  const userData = await fetchUserById(uid)
+  currentUser.value = userData
 
-    // Add posts from followed users
-    for (const followedUser of followingList) {
-      const followedPosts = store.userPosts[followedUser] || []
-      posts = posts.concat(followedPosts)
-    }
+  userStats.value = {
+    postsCount: userData.posts?.length || 0,
+    followingCount: userData.following?.length || 0,
+    followersCount: userData.followers?.length || 0
+  }
+}
 
-    // Copy, sort by latest first, and take up to 10
-    return posts
-      .slice()  // <-- copy so original arrays don't get sorted
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 10)
+async function loadFeedPosts() {
+  if (unsubscribeFeed) {
+    unsubscribeFeed()
+    unsubscribeFeed = null
+  }
+
+  if (!currentUser.value) {
+    // No user logged in → fetch global posts once
+    const posts = await fetchFeedPosts(null)
+    feedPosts.value = posts
   } else {
-    // Also sort global posts by latest
-    return store.globalPosts
-      .slice()
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 10)
+    const following = currentUser.value.following || []
+    const authorIds = following.slice(0, 10)
+
+    unsubscribeFeed = watchFeedPosts(authorIds, (posts) => {
+      feedPosts.value = posts
+    })
   }
-})
+}
 
-// For stats
-const userPosts = computed(() =>
-  currentUser.value ? store.userPosts[currentUser.value.username] || [] : []
-)
-const following = computed(() =>
-  currentUser.value ? store.following[currentUser.value.username] || [] : []
-)
-const followers = computed(() =>
-  currentUser.value ? store.followers[currentUser.value.username] || [] : []
-)
-
-// Suggested followers - users not followed yet, or 5 random users if logged out
-const suggestedFollowers = computed(() => {
-  const allUsers = store.users.filter(u => !currentUser.value || u.username !== currentUser.value.username)
-
+async function loadSuggestions() {
   if (currentUser.value) {
-    const notFollowing = allUsers.filter(
-      u => !following.value.includes(u.username)
+    suggestedFollowers.value = await fetchSuggestedUsers(
+      currentUser.value.uid,
+      currentUser.value.following || []
     )
+  } else {
+    // No user logged in → show 5 random users without exclusions
+    suggestedFollowers.value = await fetchSuggestedUsers()
+  }
+}
 
-    // Shuffle and return 5
-    return shuffle(notFollowing).slice(0, 5)
+async function handleFollow(targetUser) {
+  await followUser(currentUser.value.uid, targetUser.uid)
+
+  // Fetch target user's posts
+  const snap = await getDoc(doc(firestore, 'users', targetUser.uid))
+  const targetPosts = snap.data().posts || []
+
+  // Only update feed if there are posts to add
+  if (targetPosts.length > 0) {
+    await updateDoc(doc(firestore, 'users', currentUser.value.uid), {
+      feed: arrayUnion(...targetPosts)
+    })
   }
 
-  // If logged out, return 5 random users from all
-  return shuffle(allUsers).slice(0, 5)
+  // Reload feed
+  await loadFeedPosts()
+}
+
+async function addPost(content) {
+  try {
+    // Use the username from currentUser (make sure it's loaded)
+    const username = currentUser.value.username || 'Unknown'
+
+    // Create post with the service that sets username properly
+    const postId = await createPost(currentUser.value.uid, content, username)
+
+    // Update local stats
+    userStats.value.postsCount++
+
+    // Optionally, you might want to refresh the feed or fetch the new post explicitly here
+  } catch (err) {
+    console.error('Failed to create post:', err)
+    alert('Failed to create post: ' + err.message)
+  }
+}
+
+onMounted(async () => {
+  await loadCurrentUser()
+  await loadSuggestions()
+  await loadFeedPosts()
 })
 
-// Simple shuffle function
-function shuffle(array) {
-  const copy = [...array]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
-}
-
-function addPost(content) {
-  const username = store.currentUser.username;
-  const newPost = {
-    id: Date.now(),
-    author: username,
-    content,
-    timestamp: new Date()
-  };
-
-  // Add to allPosts reactively
-  store.allPosts = [newPost, ...store.allPosts];
-
-  // Add to user's own posts
-  if (!store.userPosts[username]) {
-    store.userPosts[username] = [];
-  }
-  store.userPosts[username].unshift(newPost);
-}
-
-function handleFollow(user) {
-  // Add to following and followers lists mock
-  if (!store.following[currentUser.value.username]) {
-    store.following[currentUser.value.username] = []
-  }
-  if (!store.followers[user.username]) {
-    store.followers[user.username] = []
-  }
-  if (!store.following[currentUser.value.username].includes(user.username)) {
-    store.following[currentUser.value.username].push(user.username)
-  }
-  if (!store.followers[user.username].includes(currentUser.value.username)) {
-    store.followers[user.username].push(currentUser.value.username)
-  }
-}
+onUnmounted(() => {
+  if (unsubscribeFeed) unsubscribeFeed()
+})
 </script>
 
 <style scoped>

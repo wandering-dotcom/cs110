@@ -1,13 +1,31 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
 import Navbar from './components/Navbar.vue'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from './firebaseResources'
+import { store } from './stores/store'
+import { ref, onMounted } from 'vue'
+
+const authReady = ref(false)
+
+onMounted(() => {
+  onAuthStateChanged(auth, user => {
+    store.currentUser = user
+    authReady.value = true
+  })
+})
 </script>
 
 <template>
   <div class="app-wrapper">
-    <Navbar />  
+    <Navbar />
     <main class="page-content">
-      <RouterView />
+      <div v-if="authReady">
+        <RouterView />
+      </div>
+      <div v-else>
+        Loading...
+      </div>
     </main>
   </div>
 </template>

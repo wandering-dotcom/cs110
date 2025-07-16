@@ -1,33 +1,30 @@
 <template>
-    <div v-if="user">
-        <div class="out">
-            <p><strong>@{{ user.username }}</strong></p>
-            <button class="logout-btn" @click="logout">Log Out</button>
-        </div>
-    </div>
+  <div v-if="user">
+    <p><strong>@{{ user.username || user.email }}</strong></p>
+    <button class="logout-btn" @click="handleLogout">Log Out</button>
+  </div>
 </template>
 
 <script setup>
-import { RouterLink, useRouter } from 'vue-router'
+import { logout } from '../services/authService'
 import { store } from '../stores/store.js'
-const router = useRouter()
+import emitter from '../eventBus'
 
-const props = defineProps({
-  user: Object
-})
+const props = defineProps({ user: Object })
 
-function logout() {
+async function handleLogout() {
+  await logout()
   store.currentUser = null
-  router.push('/login')
+  emitter.emit('logout')
 }
 </script>
 
 <style scoped>
 .out {
-    border: 3px solid #ddd;
-    background: rgba(189, 240, 245, 0.672);
-    padding: 0.5rem;
-    text-align: center;
+  border: 3px solid #ddd;
+  background: rgba(189, 240, 245, 0.672);
+  padding: 0.5rem;
+  text-align: center;
 }
 
 .logout-btn {

@@ -59,11 +59,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { store } from '../stores/store.js'
 import Logout from '../components/Logout.vue'
-
-const emit = defineEmits(['auth-success'])
+import emitter from '../eventBus'
+import { login, register } from '../services/authService'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { firestore } from '../firebaseResources.js'
 
 const creating = ref(false)
 const loginInput = ref('')
@@ -73,66 +75,94 @@ const loginTouched = ref(false)
 const passwordTouched = ref(false)
 
 const loginEmpty = computed(() => loginInput.value.trim().length === 0)
-
-const isEmail = computed(() => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(loginInput.value.trim())
-})
-
+const isEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginInput.value.trim()))
 const passwordEmpty = computed(() => passwordInput.value.length === 0)
 const hasNumber = computed(() => /\d/.test(passwordInput.value))
 const hasLetter = computed(() => /[a-zA-Z]/.test(passwordInput.value))
 const passwordValid = computed(() => hasNumber.value && hasLetter.value)
+const canSubmit = computed(() => !loginEmpty.value && isEmail.value && !passwordEmpty.value && passwordValid.value)
 
-const canSubmit = computed(() =>
-  !loginEmpty.value && isEmail.value && !passwordEmpty.value && passwordValid.value
-)
+watch(creating, () => {
+  loginInput.value = ''
+  passwordInput.value = ''
+  loginTouched.value = false
+  passwordTouched.value = false
+})
 
-function submit() {
-  if (!canSubmit.value) return
+function extractUsernameFromEmail(email) {
+  return email.split('@')[0]
+}
 
-  const email = loginInput.value.trim()
-  const password = passwordInput.value
+async function submit() {
+  if (!canSubmit.value) return;
 
-  if (creating.value) {
-    // Sign Up
-    const existingUser = store.users.find(u => u.email === email)
-    if (existingUser) {
-      alert('Account already exists with that email.')
-      return
+  const email = loginInput.value.trim();
+  const password = passwordInput.value;
+
+  let user;
+  try {
+    if (creating.value) {
+      // Register the user with Firebase Auth
+      user = await register(email, password)
+
+      const userId = user.uid
+      const username = extractUsernameFromEmail(user.email) // ✅ ADD THIS LINE
+
+      const userDocRef = doc(firestore, 'users', userId)
+      await setDoc(userDocRef, {
+        email: user.email,
+        username,
+        feed: [],
+        followers: [],
+        following: [],
+        posts: []
+      })
+
+      const freshUserDoc = await getDoc(userDocRef)
+
+      if (!freshUserDoc.exists()) {
+        alert('Failed to save user record. Try again.')
+        return
+      }
+
+      const userData = freshUserDoc.data()
+      store.currentUser = {
+        uid: userId,
+        email: user.email,
+        ...userData
+      }
+
+    } else {
+      // Firebase login via Auth
+      user = await login(email, password);
+      
+      // Now validate via Firestore
+      const userDocRef = doc(firestore, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        alert('No user record found in Firestore. Please sign up.')
+        return
+      }
+      
+      const userData = userDoc.data()
+      store.currentUser = {
+        uid: user.uid,
+        email: user.email,
+        ...userData
+      }
     }
 
-    const newUser = {
-      id: Date.now(),
-      email,
-      password,
-      username: email // generate a username from email
-    }
-    store.users.push(newUser)
-    store.currentUser = newUser
+    emitter.emit('auth-success', store.currentUser);
 
-    // Reset form, stay on login tab
-    creating.value = false
-    loginInput.value = ''
-    passwordInput.value = ''
-    loginTouched.value = false
-    passwordTouched.value = false
-  } else {
-    // Log In
-    const user = store.users.find(u => u.email === email && u.password === password)
-    if (!user) {
-      alert('Invalid email or password.')
-      return
-    }
+    loginInput.value = '';
+    passwordInput.value = '';
+    loginTouched.value = false;
+    passwordTouched.value = false;
 
-    store.currentUser = user
-    emit('auth-success', user)
-
-    // Reset form
-    loginInput.value = ''
-    passwordInput.value = ''
-    loginTouched.value = false
-    passwordTouched.value = false
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
   }
 }
 </script>

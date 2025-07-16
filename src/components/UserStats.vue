@@ -1,15 +1,11 @@
 <template>
   <div class="user-stats">
     <div v-if="user">
-        <p><strong>@{{ user.username }}</strong></p>
-        <div class="stats-grid">
-            <div>Posts</div>
-            <div>Following</div>
-            <div>Followers</div>
-            <div>{{ postsCount }}</div>
-            <div>{{ followingCount }}</div>
-            <div>{{ followersCount }}</div>
-        </div>
+      <p><strong>@{{ user.username }}</strong></p>
+      <div class="stats-grid">
+        <div>Posts</div><div>Following</div><div>Followers</div>
+        <div>{{ postsCount }}</div><div>{{ followingCount }}</div><div>{{ followersCount }}</div>
+      </div>
     </div>
     <div v-else>
       <RouterLink to="/login">Log In</RouterLink>
@@ -18,22 +14,14 @@
 </template>
 
 <script setup>
-import { RouterLink, useRouter } from 'vue-router'
-import { store } from '../stores/store.js'
+import { RouterLink } from 'vue-router'
 
-const props = defineProps({
+defineProps({
   user: Object,
   postsCount: Number,
   followingCount: Number,
   followersCount: Number
 })
-
-const router = useRouter()
-
-function logout() {
-  store.currentUser = null
-  router.push('/login')
-}
 </script>
 
 <style scoped>
