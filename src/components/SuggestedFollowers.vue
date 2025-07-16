@@ -4,7 +4,7 @@
     <ul>
       <li v-if="suggestions.length === 0">No suggestions right now.</li>
       <li v-for="user in suggestions" :key="user.uid">
-        <RouterLink :to="`/profile/${user.uid}`">
+        <RouterLink :to="`/user/${user.username}`">
           @{{ user.username || user.email }}
         </RouterLink>
         <button v-if="canFollow" @click="$emit('follow', user)">Follow</button>

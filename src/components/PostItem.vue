@@ -1,7 +1,7 @@
 <template>
   <div class="post">
     <p>
-      <strong>@{{ post.author || 'Unknown' }}</strong>
+      <strong>@{{ post.authorUsername || 'Unknown' }}</strong>
       <small class="timestamp">
         on {{ formattedDate }} at {{ formattedTime }}
       </small>

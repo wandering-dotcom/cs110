@@ -1,4 +1,4 @@
-import { auth } from '../firebaseResources.js'
+import { auth, firestore } from '../firebaseResources.js'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -17,6 +17,7 @@ async function createUserDocIfNotExists(user) {
   if (!docSnap.exists()) {
     await setDoc(userRef, {
       email: user.email,
+      username: user.email.split('@')[0], 
       feed: [],
       followers: [],
       following: [],

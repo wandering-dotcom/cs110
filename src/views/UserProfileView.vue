@@ -33,6 +33,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { query, collection, where, getDocs } from 'firebase/firestore'
 import { firestore } from '../firebaseResources.js'
+import { fetchUserByUsername, fetchUserById } from '../services/userService.js'
 
 import UserStats from '../components/UserStats.vue'
 import PostFeed from '../components/PostFeed.vue'
@@ -46,24 +47,32 @@ onMounted(async () => {
   const username = route.params.username
   if (!username) return
 
-  // Step 1: Query for user by username
-  const usersRef = collection(firestore, 'users')
-  const q = query(usersRef, where('username', '==', username))
-  const userSnap = await getDocs(q)
+  try {
+    profileUser.value = await fetchUserByUsername(username)
 
-  if (userSnap.empty) return
+    if (!profileUser.value) return
 
-  const userDoc = userSnap.docs[0]
-  profileUser.value = { uid: userDoc.id, ...userDoc.data() }
+    const uid = profileUser.value.uid
+    const postsRef = collection(firestore, 'posts')
+    const qPosts = query(postsRef, where('authorId', '==', uid))
+    const postSnap = await getDocs(qPosts)
 
-  // Step 2: Load their posts
-  const postsRef = collection(firestore, 'posts')
-  const qPosts = query(postsRef, where('authorId', '==', profileUser.value.uid))
-  const postSnap = await getDocs(qPosts)
-
-  posts.value = postSnap.docs
-    .map(d => ({ id: d.id, ...d.data(), timestamp: d.data().timestamp?.toDate() }))
+    posts.value = postSnap.docs
+    .map(doc => {
+        const data = doc.data()
+        return {
+            id: doc.id,
+            ...data,
+            authorUsername: data.author?.trim() || profileUser.value.username || 'Unknown',
+            timestamp: data.timestamp?.toDate()
+        }
+    })
     .sort((a, b) => b.timestamp - a.timestamp)
+
+    } catch (err) {
+        console.error('User profile load failed:', err.message)
+        profileUser.value = null
+    }
 })
 </script>
 

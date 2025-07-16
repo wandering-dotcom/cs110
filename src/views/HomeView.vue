@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watchEffect } from 'vue'
+import { ref, onMounted, watchEffect, onUnmounted } from 'vue'
 import { store } from '../stores/store.js'
 import UserStats from '../components/UserStats.vue'
 import PostInput from '../components/PostInput.vue'
@@ -35,9 +35,11 @@ import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 import { fetchUserById } from '../services/userService.js'
 import { followUser, unfollowUser } from '../services/followService.js'
 import { watchFeedPosts } from '../services/feedService.js'
+import { fetchFeedPosts } from '../services/feedService.js'
 import { createPost } from '../services/postService.js'
 import { fetchSuggestedUsers } from '../services/followService.js'
 import { firestore } from '../firebaseResources.js'
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
 
 // Reactive state
 const currentUser = ref(null)
@@ -61,14 +63,24 @@ async function loadCurrentUser() {
   }
 }
 
-function startPostFeedListener() {
-  if (unsubscribeFeed) unsubscribeFeed()
+async function loadFeedPosts() {
+  if (unsubscribeFeed) {
+    unsubscribeFeed()
+    unsubscribeFeed = null
+  }
 
-  const userIds = [currentUser.value.uid, ...(currentUser.value.following || [])]
-
-  unsubscribeFeed = watchFeedPosts(userIds, posts => {
+  if (!currentUser.value) {
+    // No user logged in → fetch global posts once
+    const posts = await fetchFeedPosts(null)
     feedPosts.value = posts
-  })
+  } else {
+    const following = currentUser.value.following || []
+    const authorIds = following.slice(0, 10)
+
+    unsubscribeFeed = watchFeedPosts(authorIds, (posts) => {
+      feedPosts.value = posts
+    })
+  }
 }
 
 async function loadSuggestions() {
@@ -84,15 +96,21 @@ async function loadSuggestions() {
 }
 
 async function handleFollow(targetUser) {
-  try {
-    await followUser(currentUser.value.uid, targetUser.uid)
-    await loadCurrentUser()
-    await loadSuggestions()
-    startPostFeedListener()
-    console.log(`Now following ${targetUser.username}`)
-  } catch (err) {
-    alert('Failed to follow user: ' + err.message)
+  await followUser(currentUser.value.uid, targetUser.uid)
+
+  // Fetch target user's posts
+  const snap = await getDoc(doc(firestore, 'users', targetUser.uid))
+  const targetPosts = snap.data().posts || []
+
+  // Only update feed if there are posts to add
+  if (targetPosts.length > 0) {
+    await updateDoc(doc(firestore, 'users', currentUser.value.uid), {
+      feed: arrayUnion(...targetPosts)
+    })
   }
+
+  // Reload feed
+  await loadFeedPosts()
 }
 
 async function addPost(content) {
@@ -116,7 +134,11 @@ async function addPost(content) {
 onMounted(async () => {
   await loadCurrentUser()
   await loadSuggestions()
-  startPostFeedListener()
+  await loadFeedPosts()
+})
+
+onUnmounted(() => {
+  if (unsubscribeFeed) unsubscribeFeed()
 })
 </script>
 

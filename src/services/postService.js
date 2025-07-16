@@ -32,11 +32,12 @@ export async function createPost(userId, content, username) {
   const followers = userSnap.data().followers || []
 
   for (const followerId of followers) {
+    console.log(`Adding post to ${followerId}'s feed`)
     const followerRef = doc(firestore, 'users', followerId)
     await updateDoc(followerRef, {
-      feed: arrayUnion(postDocRef.id)
-    })
-  }
+        feed: arrayUnion(postDocRef.id)
+  })
+}
 
   return postDocRef.id
 }

@@ -1,10 +1,13 @@
 import {
   doc,
   getDoc,
+  getDocs,
   collection,
   query,
   where,
-  onSnapshot
+  onSnapshot, 
+  orderBy,
+  limit
 } from 'firebase/firestore'
 import { firestore } from '../firebaseResources'
 
@@ -24,32 +27,69 @@ export function watchFeedPosts(authorIds, callback) {
   const sliced = authorIds.slice(0, 10) // Firestore "in" query limit
   const postsQuery = query(
     collection(firestore, 'posts'),
-    where('authorId', 'in', sliced)
+    where('authorId', 'in', sliced),
+    orderBy('timestamp', 'desc')
   )
 
   const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
-    const posts = await Promise.all(
-      snapshot.docs.map(async (docSnap) => {
-        const data = docSnap.data()
-        const userRef = doc(firestore, 'users', data.authorId)
-        const userSnap = await getDoc(userRef)
-        const username = userSnap.exists() ? userSnap.data().username : 'Unknown'
+    const posts = snapshot.docs.map(docSnap => {
+      const data = docSnap.data()
 
-        return {
-          id: docSnap.id,
-          content: data.content,
-          authorId: data.authorId,
-          authorUsername: username,
-          timestamp: data.timestamp?.toDate() || new Date()
-        }
-      })
-    )
+      return {
+        id: docSnap.id,
+        content: data.content,
+        authorId: data.authorId,
+        authorUsername: data.author?.trim() || 'Unknown',
+        timestamp: data.timestamp?.toDate() || new Date()
+      }
+    })
 
-    // Sort posts by timestamp (newest first)
-    posts.sort((a, b) => b.timestamp - a.timestamp)
-
+    // Already ordered by timestamp desc in Firestore
     callback(posts)
   })
 
   return unsubscribe
+}
+
+export async function fetchFeedPosts(uid = null) {
+  if (!uid) {
+    // No user logged in → return 10 most recent global posts
+    const postsQuery = query(
+      collection(firestore, 'posts'),
+      orderBy('timestamp', 'desc'),
+      limit(10)
+    )
+    const snapshot = await getDocs(postsQuery)
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      authorUsername: doc.data().author?.trim() || 'Unknown',
+      timestamp: doc.data().timestamp?.toDate()
+    }))
+  }
+
+  // Logged-in user: fetch users they are following
+  const userDoc = await getDoc(doc(firestore, 'users', uid))
+  if (!userDoc.exists()) return []
+
+  const following = userDoc.data().following || []
+
+  if (following.length === 0) return []
+
+  const sliced = following.slice(0, 10)
+
+  const postsQuery = query(
+    collection(firestore, 'posts'),
+    where('authorId', 'in', sliced),
+    orderBy('timestamp', 'desc'),
+    limit(10)
+  )
+
+  const snapshot = await getDocs(postsQuery)
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    authorUsername: doc.data().author?.trim() || 'Unknown',
+    timestamp: doc.data().timestamp?.toDate()
+  }))
 }
