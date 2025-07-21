@@ -16,9 +16,10 @@
 
       <div class="right-panel">
         <SuggestedFollowers
-          :suggestions="[profileUser]"
-          :canFollow="false"
-          title="Follow this User"
+        :suggestions="[profileUser]"
+        :canFollow="!!currentUser && currentUser.uid !== profileUser.uid"
+        @follow="handleFollow"
+        title="Follow this User"
         />
       </div>
     </div>
@@ -34,6 +35,7 @@ import { useRoute } from 'vue-router'
 import { query, collection, where, getDocs } from 'firebase/firestore'
 import { firestore } from '../firebaseResources.js'
 import { fetchUserByUsername, fetchUserById } from '../services/userService.js'
+import { followUser } from '../services/followService.js'
 
 import UserStats from '../components/UserStats.vue'
 import PostFeed from '../components/PostFeed.vue'
@@ -42,6 +44,15 @@ import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 const route = useRoute()
 const profileUser = ref(null)
 const posts = ref([])
+const currentUser = store.currentUser
+
+async function handleFollow(targetUser) {
+  if (!currentUser?.uid || !targetUser?.uid) return
+  await followUser(currentUser.uid, targetUser.uid)
+  currentUser.following.push(targetUser.uid)
+
+  await loadSuggestions()
+}
 
 onMounted(async () => {
   const username = route.params.username

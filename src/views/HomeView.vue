@@ -95,6 +95,19 @@ async function loadSuggestions() {
   }
 }
 
+async function refreshUserStats() {
+  const uid = currentUser.value?.uid
+  if (!uid) return
+  const userData = await fetchUserById(uid)
+  currentUser.value = userData
+
+  userStats.value = {
+    postsCount: userData.posts?.length || 0,
+    followingCount: userData.following?.length || 0,
+    followersCount: userData.followers?.length || 0
+  }
+}
+
 async function handleFollow(targetUser) {
   await followUser(currentUser.value.uid, targetUser.uid)
 
@@ -110,6 +123,7 @@ async function handleFollow(targetUser) {
   }
 
   // Reload feed
+  await refreshUserStats()
   await loadFeedPosts()
 }
 
@@ -123,6 +137,7 @@ async function addPost(content) {
 
     // Update local stats
     userStats.value.postsCount++
+    await refreshUserStats()
 
     // Optionally, you might want to refresh the feed or fetch the new post explicitly here
   } catch (err) {
