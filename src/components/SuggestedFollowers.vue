@@ -5,14 +5,14 @@
       <li v-if="suggestions.length === 0">No suggestions right now.</li>
       <li v-for="user in suggestions" :key="user.uid">
         <RouterLink :to="`/user/${user.username}`">
-          @{{ user.username || user.email }}
+            @{{ user.username || user.email }}
         </RouterLink>
         <button
-          v-if="canFollow && !isCurrentUser(user) && !isFollowing(user)"
-          @click="$emit('follow', user)"
+            v-if="canFollow && !isCurrentUser(user)"
+            @click="$emit(isFollowing(user) ? 'unfollow' : 'follow', user)"
         >
-          Follow
-        </button>
+            {{ isFollowing(user) ? 'Unfollow' : 'Follow' }}
+            </button>
       </li>
     </ul>
   </div>

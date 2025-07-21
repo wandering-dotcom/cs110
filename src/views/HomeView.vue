@@ -15,10 +15,11 @@
     </div>
     
     <div class="right-panel">
-      <SuggestedFollowers
+      <<SuggestedFollowers
         :suggestions="suggestedFollowers"
         :canFollow="!!currentUser"
         @follow="handleFollow"
+        @unfollow="handleUnfollow"
       />
     </div>
   </div>
@@ -125,6 +126,15 @@ async function handleFollow(targetUser) {
   // Reload feed
   await refreshUserStats()
   await loadFeedPosts()
+  await loadSuggestions()
+}
+
+async function handleUnfollow(targetUser) {
+  await unfollowUser(currentUser.value.uid, targetUser.uid)
+
+  await refreshUserStats()
+  await loadFeedPosts()
+  await loadSuggestions() // ✅ refresh suggestions again
 }
 
 async function addPost(content) {
