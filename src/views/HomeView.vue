@@ -10,6 +10,22 @@
     </div>
     
     <div class="center-panel">
+      <!-- Toggle buttons only if logged in -->
+      <div v-if="currentUser" class="feed-toggle">
+        <button
+          :class="{ active: showPersonalFeed }"
+          @click="setFeed('personal')"
+        >
+          Personal Feed
+        </button>
+        <button
+          :class="{ active: !showPersonalFeed }"
+          @click="setFeed('global')"
+        >
+          Global Feed
+        </button>
+      </div>
+
       <PostFeed :posts="feedPosts" />
       <PostInput v-if="currentUser" @new-post="addPost" />
     </div>
@@ -47,6 +63,7 @@ const currentUser = ref(null)
 const userStats = ref({ postsCount: 0, followingCount: 0, followersCount: 0 })
 const feedPosts = ref([])
 const suggestedFollowers = ref([])
+const showPersonalFeed = ref(true) // default to personal feed if logged in
 let unsubscribeFeed = null
 
 // Load user info and feed
@@ -71,16 +88,21 @@ async function loadFeedPosts() {
   }
 
   if (!currentUser.value) {
-    // No user logged in → fetch global posts once
+    // No user logged in → fetch global posts
     const posts = await fetchFeedPosts(null)
     feedPosts.value = posts
-  } else {
+  } else if (showPersonalFeed.value) {
+    // Personal feed (realtime)
     const following = currentUser.value.following || []
     const authorIds = following.slice(0, 10)
 
     unsubscribeFeed = watchFeedPosts(authorIds, (posts) => {
       feedPosts.value = posts
     })
+  } else {
+    // Global feed for logged-in users (static)
+    const posts = await fetchFeedPosts(null)
+    feedPosts.value = posts
   }
 }
 
@@ -139,21 +161,27 @@ async function handleUnfollow(targetUser) {
 
 async function addPost(content) {
   try {
-    // Use the username from currentUser (make sure it's loaded)
     const username = currentUser.value.username || 'Unknown'
-
-    // Create post with the service that sets username properly
     const postId = await createPost(currentUser.value.uid, content, username)
 
-    // Update local stats
     userStats.value.postsCount++
     await refreshUserStats()
 
-    // Optionally, you might want to refresh the feed or fetch the new post explicitly here
+    // Refresh feed if viewing global feed
+    if (!showPersonalFeed.value) {
+      const posts = await fetchFeedPosts(null)
+      feedPosts.value = posts
+    }
+
   } catch (err) {
     console.error('Failed to create post:', err)
     alert('Failed to create post: ' + err.message)
   }
+}
+
+function setFeed(feedType) {
+  showPersonalFeed.value = feedType === 'personal'
+  loadFeedPosts()
 }
 
 onMounted(async () => {
@@ -186,5 +214,31 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* Toggle buttons styling */
+.feed-toggle {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0rem;
+}
+
+.feed-toggle button {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  background: none;
+  border: 2px solid rgba(189, 240, 245, 0.672);
+  border-bottom: none;
+  color: rgba(189, 240, 245, 0.672);
+  border-radius: 5px 5px 0 0;
+  transition: background-color 0.2s ease;
+}
+
+.feed-toggle button.active {
+  background-color: rgba(189, 240, 245, 0.672);
+  color: white;
+  cursor: default;
 }
 </style>

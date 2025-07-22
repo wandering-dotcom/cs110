@@ -22,6 +22,16 @@ const router = createRouter({
       name: 'UserProfile',
       component: () => import('../views/UserProfileView.vue'),
     },
+    {
+      path: '/map',
+      name: 'MapView',
+      component: () => import('../views/MapView.vue')
+    },
+    {
+      path: '/repost/:postId',
+      name: 'RepostView',
+      component: () => import('../views/RepostView.vue')
+    }
   ],
 })
 
