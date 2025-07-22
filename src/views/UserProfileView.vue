@@ -16,10 +16,11 @@
 
       <div class="right-panel">
         <SuggestedFollowers
-        :suggestions="[profileUser]"
-        :canFollow="!!currentUser && currentUser.uid !== profileUser.uid"
-        @follow="handleFollow"
-        title="Follow this User"
+            :suggestions="[profileUser]"
+            :canFollow="!!currentUser && currentUser.uid !== profileUser.uid"
+            @follow="handleFollow"
+            @unfollow="handleUnfollow"
+            title="Follow this User"
         />
       </div>
     </div>
@@ -30,34 +31,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { query, collection, where, getDocs } from 'firebase/firestore'
 import { firestore } from '../firebaseResources.js'
-import { fetchUserByUsername, fetchUserById } from '../services/userService.js'
+import { fetchUserByUsername } from '../services/userService.js'
 import { followUser } from '../services/followService.js'
-
 import UserStats from '../components/UserStats.vue'
 import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
+import { unfollowUser } from '../services/followService.js'
+import { store } from '../stores/store.js'
 
 const route = useRoute()
 const profileUser = ref(null)
 const posts = ref([])
 const currentUser = store.currentUser
 
-async function handleFollow(targetUser) {
-  if (!currentUser?.uid || !targetUser?.uid) return
-  await followUser(currentUser.uid, targetUser.uid)
-  currentUser.following.push(targetUser.uid)
-
-  await loadSuggestions()
-}
-
-onMounted(async () => {
-  const username = route.params.username
-  if (!username) return
-
+async function loadProfile(username) {
   try {
     profileUser.value = await fetchUserByUsername(username)
 
@@ -68,22 +59,70 @@ onMounted(async () => {
     const qPosts = query(postsRef, where('authorId', '==', uid))
     const postSnap = await getDocs(qPosts)
 
-    posts.value = postSnap.docs
-    .map(doc => {
-        const data = doc.data()
-        return {
-            id: doc.id,
-            ...data,
-            authorUsername: data.author?.trim() || profileUser.value.username || 'Unknown',
-            timestamp: data.timestamp?.toDate()
-        }
-    })
-    .sort((a, b) => b.timestamp - a.timestamp)
+    posts.value = postSnap.docs.map(doc => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        ...data,
+        authorUsername: data.author?.trim() || profileUser.value.username || 'Unknown',
+        timestamp: data.timestamp?.toDate()
+      }
+    }).sort((a, b) => b.timestamp - a.timestamp)
 
-    } catch (err) {
-        console.error('User profile load failed:', err.message)
-        profileUser.value = null
+  } catch (err) {
+    console.error('User profile load failed:', err.message)
+    profileUser.value = null
+  }
+}
+
+async function refreshProfileUser() {
+  if (!profileUser.value?.username) return
+  profileUser.value = await fetchUserByUsername(profileUser.value.username)
+}
+
+async function handleFollow(targetUser) {
+  if (!currentUser?.uid || !targetUser?.uid) return
+
+  await followUser(currentUser.uid, targetUser.uid)
+
+  // Ensure currentUser.following is an array
+  if (!Array.isArray(currentUser.following)) {
+    currentUser.following = []
+  }
+
+  if (!currentUser.following.includes(targetUser.uid)) {
+    currentUser.following.push(targetUser.uid)
+  }
+
+  await refreshProfileUser()
+}
+
+async function handleUnfollow(targetUser) {
+  if (!currentUser?.uid || !targetUser?.uid) return
+
+  await unfollowUser(currentUser.uid, targetUser.uid)
+
+  if (Array.isArray(currentUser.following)) {
+    const index = currentUser.following.indexOf(targetUser.uid)
+    if (index !== -1) {
+      currentUser.following.splice(index, 1)
     }
+  }
+
+  await refreshProfileUser()
+}
+
+onMounted(() => {
+  if (route.params.username) {
+    loadProfile(route.params.username)
+  }
+})
+
+// WATCH FOR ROUTE CHANGES
+watch(() => route.params.username, (newUsername) => {
+  if (newUsername) {
+    loadProfile(newUsername)
+  }
 })
 </script>
 

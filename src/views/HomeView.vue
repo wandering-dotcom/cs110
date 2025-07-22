@@ -15,7 +15,7 @@
     </div>
     
     <div class="right-panel">
-      <<SuggestedFollowers
+      <SuggestedFollowers
         :suggestions="suggestedFollowers"
         :canFollow="!!currentUser"
         @follow="handleFollow"
