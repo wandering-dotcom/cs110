@@ -1,6 +1,6 @@
 <template>
-  <div class="visual" v-if="user">
-    <h3>Most Highlighted Words by {{ user }}</h3>
+  <div class="visual" v-if="wordPercentages && totalHighlights > 0">
+    <h3>Most Highlighted Words</h3>
     <div class="word-cloud">
       <span
         v-for="(pct, word) in wordPercentages"
@@ -31,7 +31,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { firestore } from '../firebaseResources.js'
 
 const props = defineProps({
-  user: String,
+  postId: String
 })
 
 const wordCounts = ref({})
@@ -54,31 +54,16 @@ const wordPercentages = computed(() => {
 })
 
 async function loadHighlights() {
-  if (!props.user) return
+  if (!props.postId) return
 
-  // Query posts by user
-  const postsQ = query(collection(firestore, 'posts'), where('authorUsername', '==', props.user))
-  const postsSnap = await getDocs(postsQ)
-  const postIds = postsSnap.docs.map(d => d.id)
+  const repostQuery = query(
+    collection(firestore, 'posts'),
+    where('originalPostId', '==', props.postId)
+  )
 
-  if (postIds.length === 0) return
+  const snap = await getDocs(repostQuery)
+  const reposts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
-  // Query reposts with originalPostId in postIds (batch in chunks if needed)
-  const reposts = []
-  const batchQueries = []
-  const chunkSize = 10
-
-  for (let i = 0; i < postIds.length; i += chunkSize) {
-    const chunk = postIds.slice(i, i + chunkSize)
-    batchQueries.push(query(collection(firestore, 'posts'), where('originalPostId', 'in', chunk)))
-  }
-
-  for (const q of batchQueries) {
-    const snap = await getDocs(q)
-    reposts.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })))
-  }
-
-  // Process reposts data
   wordCounts.value = {}
   totalHighlights.value = 0
   wordComments.value = {}
@@ -88,14 +73,21 @@ async function loadHighlights() {
     const comment = repost.repostComment?.trim()
     if (!quote) return
 
-    const word = quote.split(' ')[0].toLowerCase()
-    wordCounts.value[word] = (wordCounts.value[word] || 0) + 1
-    totalHighlights.value++
+    const words = quote
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '') // remove punctuation
+      .split(/\s+/) // split by whitespace
 
-    if (comment) {
-      if (!wordComments.value[word]) wordComments.value[word] = []
-      wordComments.value[word].push({ id: repost.id, comment })
-    }
+    words.forEach(word => {
+      if (!word) return
+      wordCounts.value[word] = (wordCounts.value[word] || 0) + 1
+      totalHighlights.value++
+
+      if (comment) {
+        if (!wordComments.value[word]) wordComments.value[word] = []
+        wordComments.value[word].push({ id: repost.id, comment })
+      }
+    })
   })
 }
 
@@ -103,13 +95,8 @@ function selectWord(word) {
   selectedWord.value = word
 }
 
-watch(() => props.user, () => {
-  loadHighlights()
-})
-
-onMounted(() => {
-  loadHighlights()
-})
+watch(() => props.postId, () => loadHighlights())
+onMounted(() => loadHighlights())
 </script>
 
 <style scoped>
@@ -121,9 +108,8 @@ onMounted(() => {
 }
 
 .word {
-  position: relative;
   cursor: pointer;
-  background: #d5f6f8;
+  background: #75b9bc;
   padding: 0.3rem 0.6rem;
   border-radius: 5px;
   user-select: none;
@@ -155,7 +141,7 @@ onMounted(() => {
 }
 
 .comments {
-  background: #eef;
+  background: rgb(159, 159, 253);
   padding: 1rem;
   border-radius: 8px;
   max-width: 600px;
