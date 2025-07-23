@@ -31,19 +31,31 @@ const router = useRouter()
 
 const postId = route.params.postId
 const originalPost = ref(null)
-const repostComment = ref('')
 const loading = ref(true)
-const annotationData = ref({ quote: '', comment: '' })
+const annotationData = ref({
+  quote: useRoute().query.quote || '',
+  comment: ''
+})
 
 function handleAnnotation(payload) {
   annotationData.value = payload
+}
+
+function getRandomLatLng() {
+  // Example: worldwide
+  const lat = (Math.random() * 180 - 90).toFixed(6) // -90 to +90
+  const lng = (Math.random() * 360 - 180).toFixed(6) // -180 to +180
+  return { lat: parseFloat(lat), lng: parseFloat(lng) }
 }
 
 onMounted(async () => {
   try {
     const snap = await getDoc(doc(firestore, 'posts', postId))
     if (snap.exists()) {
-      originalPost.value = { id: snap.id, ...snap.data() }
+      const postData = { id: snap.id, ...snap.data() }
+      const userSnap = await getDoc(doc(firestore, 'users', postData.authorId))
+      postData.authorUsername = userSnap.exists() ? userSnap.data().username : 'Unknown'
+      originalPost.value = postData
     }
   } catch (err) {
     console.error('Failed to load original post:', err)
@@ -52,13 +64,6 @@ onMounted(async () => {
   }
 })
 
-function formatRepostContent({ quote, comment }) {
-  if (!quote && !comment) return '[Repost]'
-  if (!comment) return `> ${quote}`
-  if (!quote) return comment
-  return `> ${quote}\n\n${comment}`
-}
-
 async function submitRepost() {
   const currentUser = store.currentUser
   if (!currentUser) {
@@ -66,17 +71,19 @@ async function submitRepost() {
     return
   }
 
-  const quote = annotationData.value.quote
-  const comment = annotationData.value.comment
-
-  let content = '[Repost]'
-  if (quote && comment) {
-    content = `> ${quote}\n\n${comment}`
-  } else if (quote) {
-    content = `> ${quote}`
-  } else if (comment) {
-    content = comment
+  let username = currentUser.username
+  if (!username) {
+    // Manually fetch from users collection
+    const userSnap = await getDoc(doc(firestore, 'users', currentUser.uid))
+    username = userSnap.exists() ? userSnap.data().username : 'Unknown'
   }
+
+  const { quote, comment } = annotationData.value
+  const content = quote && comment
+    ? `> ${quote}\n${comment}`
+    : quote
+    ? `> ${quote}`
+    : comment || '[Repost]'
 
   const newRepost = {
     originalPostId: originalPost.value.id,
@@ -84,21 +91,30 @@ async function submitRepost() {
     originalContent: originalPost.value.content,
     repostComment: comment,
     highlightedQuote: quote,
-    content, // ✅ this is what shows in PostItem
+    content,
     authorId: currentUser.uid,
-    authorUsername: currentUser.username || 'Unknown', // ✅ should be set in login.vue
+    authorUsername: username || 'Unknown',
     timestamp: new Date()
   }
 
+  // Add random location
+  const { lat, lng } = getRandomLatLng() // or getRandomLatLngInNYC()
+  newRepost.lat = lat
+  newRepost.lng = lng
+
+  await saveRepost(newRepost)
+}
+
+async function saveRepost(newRepost) {
   try {
     const repostRef = await addDoc(collection(firestore, 'posts'), newRepost)
+    const userRef = doc(firestore, 'users', store.currentUser.uid)
 
-    const userRef = doc(firestore, 'users', currentUser.uid)
     await updateDoc(userRef, {
       posts: arrayUnion(repostRef.id)
     })
 
-    const followers = currentUser.followers || []
+    const followers = store.currentUser.followers || []
     for (const followerId of followers) {
       const followerRef = doc(firestore, 'users', followerId)
       await updateDoc(followerRef, {

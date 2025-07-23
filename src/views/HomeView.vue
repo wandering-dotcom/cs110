@@ -26,7 +26,8 @@
         </button>
       </div>
 
-      <PostFeed :posts="feedPosts" />
+      <!-- Pass isPersonalFeed so PostFeed knows which feed it is -->
+      <PostFeed :posts="feedPosts" :isPersonalFeed="showPersonalFeed" />
       <PostInput v-if="currentUser" @new-post="addPost" />
     </div>
     
@@ -42,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watchEffect, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { store } from '../stores/store.js'
 import UserStats from '../components/UserStats.vue'
 import PostInput from '../components/PostInput.vue'
@@ -58,15 +59,13 @@ import { fetchSuggestedUsers } from '../services/followService.js'
 import { firestore } from '../firebaseResources.js'
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
 
-// Reactive state
 const currentUser = ref(null)
 const userStats = ref({ postsCount: 0, followingCount: 0, followersCount: 0 })
 const feedPosts = ref([])
 const suggestedFollowers = ref([])
-const showPersonalFeed = ref(true) // default to personal feed if logged in
+const showPersonalFeed = ref(true)
 let unsubscribeFeed = null
 
-// Load user info and feed
 async function loadCurrentUser() {
   const uid = store.currentUser?.uid
   if (!uid) return
@@ -81,6 +80,60 @@ async function loadCurrentUser() {
   }
 }
 
+// Enrich posts with author usernames
+async function enrichPostsWithUsernames(posts) {
+  const uniqueAuthorIds = [...new Set(posts.map(post => post.authorId))]
+  const userDocs = await Promise.all(
+    uniqueAuthorIds.map(uid => getDoc(doc(firestore, 'users', uid)))
+  )
+  const uidToUsername = {}
+  userDocs.forEach(docSnap => {
+    if (docSnap.exists()) {
+      uidToUsername[docSnap.id] = docSnap.data().username || 'Unknown'
+    }
+  })
+
+  return posts.map(post => ({
+    ...post,
+    authorUsername: uidToUsername[post.authorId] || 'Unknown',
+    originalPostId: post.originalPostId || null,
+    highlightedQuote: post.highlightedQuote || null,
+    repostComment: post.repostComment || null,
+    isRepost: !!post.originalPostId
+  }))
+}
+
+// Enrich reposts by fetching original post data
+async function enrichRepostsWithOriginalContent(posts) {
+  const reposts = posts.filter(post => post.originalPostId)
+  if (reposts.length === 0) return posts
+
+  const originalPostIds = reposts.map(post => post.originalPostId)
+  const originalPostDocs = await Promise.all(
+    originalPostIds.map(id => getDoc(doc(firestore, 'posts', id)))
+  )
+
+  const originalPostsMap = {}
+  for (const docSnap of originalPostDocs) {
+    if (docSnap.exists()) {
+      originalPostsMap[docSnap.id] = docSnap.data()
+    }
+  }
+
+  return posts.map(post => {
+    if (post.originalPostId && originalPostsMap[post.originalPostId]) {
+      const original = originalPostsMap[post.originalPostId]
+      return {
+        ...post,
+        originalPostContent: original.content,
+        originalPostAuthorId: original.authorId,
+        originalPostTimestamp: original.timestamp
+      }
+    }
+    return post
+  })
+}
+
 async function loadFeedPosts() {
   if (unsubscribeFeed) {
     unsubscribeFeed()
@@ -88,20 +141,26 @@ async function loadFeedPosts() {
   }
 
   if (!currentUser.value) {
-    // No user logged in → fetch global posts
-    const posts = await fetchFeedPosts(null)
+    // No user → global feed
+    let posts = await fetchFeedPosts(null)
+    posts = await enrichPostsWithUsernames(posts)
+    posts = await enrichRepostsWithOriginalContent(posts)
     feedPosts.value = posts
   } else if (showPersonalFeed.value) {
     // Personal feed (realtime)
     const following = currentUser.value.following || []
     const authorIds = following.slice(0, 10)
 
-    unsubscribeFeed = watchFeedPosts(authorIds, (posts) => {
-      feedPosts.value = posts
+    unsubscribeFeed = watchFeedPosts(authorIds, async (posts) => {
+      let enriched = await enrichPostsWithUsernames(posts)
+      enriched = await enrichRepostsWithOriginalContent(enriched)
+      feedPosts.value = enriched
     })
   } else {
-    // Global feed for logged-in users (static)
-    const posts = await fetchFeedPosts(null)
+    // Global feed (logged-in, static)
+    let posts = await fetchFeedPosts(null)
+    posts = await enrichPostsWithUsernames(posts)
+    posts = await enrichRepostsWithOriginalContent(posts)
     feedPosts.value = posts
   }
 }
@@ -113,7 +172,6 @@ async function loadSuggestions() {
       currentUser.value.following || []
     )
   } else {
-    // No user logged in → show 5 random users without exclusions
     suggestedFollowers.value = await fetchSuggestedUsers()
   }
 }
@@ -134,18 +192,15 @@ async function refreshUserStats() {
 async function handleFollow(targetUser) {
   await followUser(currentUser.value.uid, targetUser.uid)
 
-  // Fetch target user's posts
   const snap = await getDoc(doc(firestore, 'users', targetUser.uid))
   const targetPosts = snap.data().posts || []
 
-  // Only update feed if there are posts to add
   if (targetPosts.length > 0) {
     await updateDoc(doc(firestore, 'users', currentUser.value.uid), {
       feed: arrayUnion(...targetPosts)
     })
   }
 
-  // Reload feed
   await refreshUserStats()
   await loadFeedPosts()
   await loadSuggestions()
@@ -156,23 +211,21 @@ async function handleUnfollow(targetUser) {
 
   await refreshUserStats()
   await loadFeedPosts()
-  await loadSuggestions() // ✅ refresh suggestions again
+  await loadSuggestions()
 }
 
 async function addPost(content) {
   try {
     const username = currentUser.value.username || 'Unknown'
-    const postId = await createPost(currentUser.value.uid, content, username)
+    await createPost(currentUser.value.uid, content, username)
 
     userStats.value.postsCount++
     await refreshUserStats()
 
-    // Refresh feed if viewing global feed
     if (!showPersonalFeed.value) {
       const posts = await fetchFeedPosts(null)
       feedPosts.value = posts
     }
-
   } catch (err) {
     console.error('Failed to create post:', err)
     alert('Failed to create post: ' + err.message)
@@ -196,7 +249,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-  .home-container {
+.home-container {
   display: flex;
   gap: 2rem;
   padding: 1rem;
@@ -206,17 +259,16 @@ onUnmounted(() => {
 
 .left-panel, .right-panel {
   flex: 1;
-  max-width: 250px; /* limit width */
+  max-width: 250px;
 }
 
 .center-panel {
-  flex: 2; /* take more space */
+  flex: 2;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-/* Toggle buttons styling */
 .feed-toggle {
   display: flex;
   width: 100%;

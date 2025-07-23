@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import MapView from '../views/MapView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,15 +24,20 @@ const router = createRouter({
       component: () => import('../views/UserProfileView.vue'),
     },
     {
-      path: '/map',
+      path: '/map/:postId',
       name: 'MapView',
-      component: () => import('../views/MapView.vue')
+      component: MapView,
     },
     {
       path: '/repost/:postId',
       name: 'RepostView',
       component: () => import('../views/RepostView.vue')
-    }
+    },
+    {
+      path: '/post/:postId',
+      name: 'SinglePostView',
+      component: () => import('../views/SinglePostView.vue'),
+    },
   ],
 })
 

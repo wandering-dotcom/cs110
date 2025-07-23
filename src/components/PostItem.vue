@@ -1,23 +1,34 @@
 <template>
   <div class="post">
-    <div class="post-header">
+    <div class="post-header" ref="dropdownRef">
       <div class="user-meta">
         <router-link :to="`/user/${post.authorUsername}`">
-            @{{ post.authorUsername || 'Unknown' }}
-        </router-link><span class="timestamp">on {{ formattedDate }} at {{ formattedTime }}</span>
-        </div>
-      <div class="menu" @click="showMenu = !showMenu">⋮</div>
-      <div v-if="showMenu" class="dropdown" ref="dropdownRef">
-        <router-link :to="`/map?user=${post.authorUsername}`">View Heatmap</router-link>
-        <router-link :to="`/repost/${post.id}`">Repost & Annotate</router-link></div>
+          @{{ post.authorUsername || 'Unknown' }}
+        </router-link>
+        <span class="timestamp">on {{ formattedDate }} at {{ formattedTime }}</span>
+      </div>
+      <div class="menu" @click.stop="toggleMenu">⋮</div>
+      <div v-if="showMenu" class="dropdown" @click.stop>
+        <a href="#" class="dropdown-option" @click.prevent="goToHeatmap">View Heatmap</a>
+        <router-link :to="`/repost/${post.id}`">Repost & Annotate</router-link>
+    </div>
     </div>
     <p>{{ post.content }}</p>
+    <!-- If this post is a repost, link to original -->
+    <div v-if="post.originalPostId || post.originalPostContent" class="original-link">
+        <router-link :to="`/post/${post.originalPostId}`">View Original Post</router-link>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { nextTick } from 'vue'
+
+const router = useRouter()
 const showMenu = ref(false)
+const dropdownRef = ref(null)
 
 const props = defineProps({
   post: {
@@ -26,6 +37,38 @@ const props = defineProps({
   }
 })
 
+function goToHeatmap() {
+  if (!props.post.id) {
+    alert('No post ID provided')
+    return
+  }
+  router.push({ name: 'MapView', params: { postId: props.post.id } }).then(() => {
+    nextTick(() => {
+      showMenu.value = false
+    })
+  })
+}
+
+function toggleMenu() {
+  showMenu.value = !showMenu.value
+}
+
+// Handler to close dropdown if clicked outside
+function onClickOutside(event) {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+    showMenu.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', onClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutside)
+})
+
+// Date formatting logic same as before
 const date = computed(() => {
   const ts = props.post.timestamp
   if (!ts) return new Date(NaN)
@@ -59,7 +102,7 @@ const formattedTime = computed(() => {
 }
 
 .post-header {
-  position: relative;
+  position: relative; /* for absolute dropdown positioning */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,8 +113,8 @@ const formattedTime = computed(() => {
 }
 
 .menu {
-  float: right;
   cursor: pointer;
+  user-select: none;
 }
 
 .dropdown {
@@ -79,10 +122,10 @@ const formattedTime = computed(() => {
   right: 0;
   top: 100%;
   margin-top: 0.5rem;
-  background-color:  rgb(144, 183, 186); 
+  background-color: rgb(144, 183, 186);
   border: 2px solid #ffffff;
   border-radius: 8px;
-  padding: 0rem;
+  padding: 0;
   z-index: 1000;
   min-width: 180px;
 }
@@ -98,5 +141,37 @@ const formattedTime = computed(() => {
 
 .dropdown a:hover {
   background-color: #a5e1e8;
+}
+
+.dropdown-option {
+  padding: 0.5rem;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.dropdown-option:hover {
+  background-color: #a5e1e8;
+}
+
+.post p {
+  white-space: pre-line;
+}
+
+.original-link {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #2b4c5b;
+}
+
+.original-link a {
+  text-decoration: underline;
+  color: #2b4c5b;
+}
+
+.original-link a:hover {
+  color: #0b2531;
 }
 </style>

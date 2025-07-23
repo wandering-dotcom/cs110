@@ -94,7 +94,7 @@ onMounted(() => {
 .post-feed {
   border: 3px solid #ddd;
   background: rgba(189, 240, 245, 0.672);
-  margin-bottom: 1rem;
+  margin-bottom: 0rem;
   padding: 0.5rem;
 }
 
