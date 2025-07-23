@@ -6,8 +6,8 @@
         <span class="timestamp"> on {{ formattedDate }} at {{ formattedTime }}</span>
       </div>
 
-      <!-- 🔒 Show menu only if NOT a repost -->
-      <template v-if="!post.isRepost">
+      <!-- ✅ Show menu only if parent says to -->
+      <template v-if="showMenuProp">
         <div class="menu" @click.stop="toggleMenu">⋮</div>
         <div v-if="showMenu" class="dropdown" @click.stop>
           <a href="#" class="dropdown-option" @click.prevent="goToHeatmap">View Heatmap</a>
@@ -56,6 +56,10 @@ const props = defineProps({
   post: {
     type: Object,
     required: true
+  },
+  showMenu: {
+    type: Boolean,
+    default: true
   }
 })
 
