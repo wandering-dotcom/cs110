@@ -42,16 +42,65 @@ import PostFeed from '../components/PostFeed.vue'
 import SuggestedFollowers from '../components/SuggestedFollowers.vue'
 import { unfollowUser } from '../services/followService.js'
 import { store } from '../stores/store.js'
+import { doc, getDoc } from 'firebase/firestore'
 
 const route = useRoute()
 const profileUser = ref(null)
 const posts = ref([])
 const currentUser = store.currentUser
 
+async function enrichRepostsWithOriginalContent(posts) {
+  const reposts = posts.filter(post => post.originalPostId)
+  if (reposts.length === 0) return posts
+
+  const originalPostIds = reposts.map(post => post.originalPostId)
+  const originalPostDocs = await Promise.all(
+    originalPostIds.map(id => getDoc(doc(firestore, 'posts', id)))
+  )
+
+  const originalPostsMap = {}
+  const uniqueOriginalAuthorIds = new Set()
+
+  for (const docSnap of originalPostDocs) {
+    if (docSnap.exists()) {
+      const data = docSnap.data()
+      originalPostsMap[docSnap.id] = data
+      if (data.authorId) uniqueOriginalAuthorIds.add(data.authorId)
+    }
+  }
+
+  // Fetch usernames for original authors
+  const authorDocs = await Promise.all(
+    Array.from(uniqueOriginalAuthorIds).map(uid => getDoc(doc(firestore, 'users', uid)))
+  )
+
+  const authorIdToUsername = {}
+  for (const docSnap of authorDocs) {
+    if (docSnap.exists()) {
+      authorIdToUsername[docSnap.id] = docSnap.data().username || 'Unknown'
+    }
+  }
+
+  return posts.map(post => {
+    if (post.originalPostId && originalPostsMap[post.originalPostId]) {
+      const original = originalPostsMap[post.originalPostId]
+      const originalAuthorId = original.authorId
+      return {
+        ...post,
+        originalPostContent: original.content,
+        originalPostAuthorId: originalAuthorId,
+        originalPostTimestamp: original.timestamp,
+        originalPostAuthorUsername: authorIdToUsername[originalAuthorId] || 'Unknown',
+        isRepost: true
+      }
+    }
+    return { ...post, isRepost: false }
+  })
+}
+
 async function loadProfile(username) {
   try {
     profileUser.value = await fetchUserByUsername(username)
-
     if (!profileUser.value) return
 
     const uid = profileUser.value.uid
@@ -59,7 +108,7 @@ async function loadProfile(username) {
     const qPosts = query(postsRef, where('authorId', '==', uid))
     const postSnap = await getDocs(qPosts)
 
-    posts.value = postSnap.docs.map(doc => {
+    let rawPosts = postSnap.docs.map(doc => {
       const data = doc.data()
       return {
         id: doc.id,
@@ -68,6 +117,8 @@ async function loadProfile(username) {
         timestamp: data.timestamp?.toDate()
       }
     }).sort((a, b) => b.timestamp - a.timestamp)
+
+    posts.value = await enrichRepostsWithOriginalContent(rawPosts)
 
   } catch (err) {
     console.error('User profile load failed:', err.message)

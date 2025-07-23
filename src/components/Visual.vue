@@ -1,15 +1,16 @@
 <template>
-  <div class="visual" v-if="wordPercentages && totalHighlights > 0">
+  <div class="visual" v-if="orderedWords.length > 0">
     <h3>Most Highlighted Words</h3>
     <div class="word-cloud">
       <span
-        v-for="(pct, word) in wordPercentages"
+        v-for="word in orderedWords"
         :key="word"
-        :class="'word ' + getSizeClass(pct)"
+        class="word"
+        :style="getWordStyle(word)"
         @click="selectWord(word)"
       >
         {{ word }}
-        <small class="pct">{{ pct }}%</small>
+        <small class="pct">{{ wordPercentages[word] }}%</small>
       </span>
     </div>
 
@@ -27,7 +28,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../firebaseResources.js'
 
 const props = defineProps({
@@ -35,15 +36,10 @@ const props = defineProps({
 })
 
 const wordCounts = ref({})
+const wordOrder = ref([]) // preserves original order
 const totalHighlights = ref(0)
 const wordComments = ref({})
 const selectedWord = ref('')
-
-function getSizeClass(pct) {
-  if (pct > 50) return 'large'
-  if (pct > 25) return 'medium'
-  return 'small'
-}
 
 const wordPercentages = computed(() => {
   const out = {}
@@ -53,18 +49,62 @@ const wordPercentages = computed(() => {
   return out
 })
 
+const orderedWords = computed(() => {
+  return wordOrder.value.filter(word => word in wordCounts.value)
+})
+
+function getWordStyle(word) {
+  const pct = wordPercentages.value[word] || 0
+
+  const hue = 190
+  const saturation = 70
+  const lightness = 85 - (pct * 0.5) // Range from 85% (light) to 60% (dark)
+
+  // Determine text color based on lightness
+  const textColor = lightness < 70 ? '#fff' : '#002b36'
+
+  return {
+    backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
+    color: textColor,
+    fontWeight: '600',
+    fontSize: `${1 + pct / 50}rem`,
+  }
+}
+
+function selectWord(word) {
+  selectedWord.value = word
+}
+
 async function loadHighlights() {
   if (!props.postId) return
 
+  // Load original post first
+  const originalPostRef = doc(firestore, 'posts', props.postId)
+  const originalSnap = await getDoc(originalPostRef)
+  if (!originalSnap.exists()) return
+
+  const originalContent = originalSnap.data().content || ''
+  const words = originalContent
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+
+  // Set word order and initialize counts
+  wordOrder.value = words
+  wordCounts.value = {}
+  words.forEach(word => {
+    if (word) wordCounts.value[word] = 0
+  })
+
+  // Load reposts
   const repostQuery = query(
     collection(firestore, 'posts'),
     where('originalPostId', '==', props.postId)
   )
-
   const snap = await getDocs(repostQuery)
   const reposts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
-  wordCounts.value = {}
   totalHighlights.value = 0
   wordComments.value = {}
 
@@ -73,14 +113,16 @@ async function loadHighlights() {
     const comment = repost.repostComment?.trim()
     if (!quote) return
 
-    const words = quote
+    const quotedWords = quote
       .toLowerCase()
-      .replace(/[^\w\s]/g, '') // remove punctuation
-      .split(/\s+/) // split by whitespace
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(Boolean)
 
-    words.forEach(word => {
+    quotedWords.forEach(word => {
       if (!word) return
-      wordCounts.value[word] = (wordCounts.value[word] || 0) + 1
+      if (!(word in wordCounts.value)) return // skip if not in original post
+      wordCounts.value[word]++
       totalHighlights.value++
 
       if (comment) {
@@ -89,10 +131,6 @@ async function loadHighlights() {
       }
     })
   })
-}
-
-function selectWord(word) {
-  selectedWord.value = word
 }
 
 watch(() => props.postId, () => loadHighlights())
@@ -109,35 +147,24 @@ onMounted(() => loadHighlights())
 
 .word {
   cursor: pointer;
-  background: #75b9bc;
-  padding: 0.3rem 0.6rem;
-  border-radius: 5px;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
   user-select: none;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.4rem;
+  transition: background-color 0.3s, font-size 0.3s, color 0.3s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .word:hover {
-  background-color: #a5e1e8;
+  outline: 1px solid #007b8f;
 }
 
 .pct {
   font-size: 0.75rem;
   font-weight: bold;
   color: #004a6e;
-}
-
-.small {
-  font-size: 1rem;
-}
-
-.medium {
-  font-size: 1.5rem;
-}
-
-.large {
-  font-size: 2rem;
 }
 
 .comments {

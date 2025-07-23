@@ -5,23 +5,34 @@
     <div v-if="latLngReady" id="map"></div>
     <div v-else>Map data not available</div>
 
-    <div id="map-legend" class="map-legend">
-    <h4>Legend</h4>
-    <div><span class="circle-sample"></span> Repost location</div>
-    <div><span class="heat-sample"></span> Heatmap intensity</div>
+    <div v-if="reposts.length" class="legend-and-feed">
+      <div id="map-legend" class="map-legend">
+        <h4>Legend</h4>
+        <div><span class="circle-sample"></span> Repost location</div>
+        <div class="heat-label">Heatmap intensity</div>
+        <div class="heat-gradient">
+          <span class="label">Low</span>
+          <div class="gradient-bar"></div>
+          <span class="label">High</span>
+        </div>
+      </div>
+
+      <div class="repost-feed">
+        <h3>Reposts</h3>
+        <ul>
+          <li v-for="repost in reposts" :key="repost.id">
+            <router-link :to="`/post/${repost.originalPostId}`">
+              <strong>@{{ repost.authorUsername }}</strong>:
+              <span v-if="repost.highlightedQuote">“{{ repost.highlightedQuote }}”</span>
+            </router-link>
+            <span v-if="repost.repostComment"> — {{ repost.repostComment }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
 
-    <div v-if="reposts.length" class="repost-feed">
-      <h3>Reposts</h3>
-      <ul>
-        <li v-for="repost in reposts" :key="repost.id">
-          <router-link :to="`/post/${repost.originalPostId}`">
-            <strong>@{{ repost.authorUsername }}</strong>:
-            <span v-if="repost.highlightedQuote">“{{ repost.highlightedQuote }}”</span>
-          </router-link>
-          <span v-if="repost.repostComment"> — {{ repost.repostComment }}</span>
-        </li>
-      </ul>
+    <!-- Back to Feed button below legend and repost feed -->
+    <div class="back-button-container">
       <router-link to="/" class="back-link">← Back to Feed</router-link>
     </div>
   </div>
@@ -183,13 +194,13 @@ onMounted(async () => {
 
           // Heatmap layer for repost locations
           const heatPoints = reposts.value.map(r => [r.lat, r.lng, 0.6])
-            const heat = L.heatLayer(heatPoints, {
+          const heat = L.heatLayer(heatPoints, {
             radius: 25,
             maxZoom: 17,
             blur: 20,
             max: 1.0
-            }).addTo(map.value)
-                    }
+          }).addTo(map.value)
+        }
       }, 1500)
     }
   } catch (error) {
@@ -209,32 +220,44 @@ onMounted(async () => {
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
 }
 
-.repost-feed {
+.legend-and-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   margin-top: 20px;
 }
 
-.back-link {
-  display: inline-block;
-  margin-top: 10px;
-  color: #555;
-  text-decoration: none;
-}
+@media (min-width: 768px) {
+  .legend-and-feed {
+    flex-direction: row;
+    align-items: flex-start; /* align tops */
+  }
 
-.back-link:hover {
-  text-decoration: underline;
+  .map-legend {
+    flex: 0 0 240px;
+  }
+
+  .repost-feed {
+    flex: 1;
+  }
 }
 
 .map-legend {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  background: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  color: #222;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
   font-size: 0.9rem;
-  z-index: 999;
-  color: black;
+  max-width: 240px;
+  transition: all 0.3s ease;
+}
+
+.map-legend h4 {
+  margin-top: 0;
+  margin-bottom: 6px;
+  font-size: 1rem;
+  color: #003348;
 }
 
 .circle-sample,
@@ -250,7 +273,88 @@ onMounted(async () => {
   background-color: #3388ff;
 }
 
-.heat-sample {
-  background: linear-gradient(135deg, orange, red);
+.heat-label {
+  margin-top: 10px;
+  margin-bottom: 6px;
+  font-weight: bold;
+  color: #004a6e;
+}
+
+.heat-gradient {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gradient-bar {
+  flex-grow: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, rgba(0, 255, 255, 0.4), orange, red);
+  border: 1px solid #ccc;
+  width: 100px;
+}
+
+.label {
+  font-size: 0.75rem;
+  color: #333;
+}
+
+.repost-feed {
+  background: #f8fbfd;
+  border: 1px solid #d4e2ea;
+  padding: 1rem;
+  border-radius: 8px;
+  line-height: 1.6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  color: #003348;
+}
+
+.repost-feed h3 {
+  margin-top: 0;
+  color: #003348;
+}
+
+.repost-feed ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.repost-feed li {
+  margin-bottom: 0.75rem;
+}
+
+.repost-feed a {
+  color: #005b8f;
+  text-decoration: none;
+}
+
+.repost-feed a:hover {
+  text-decoration: underline;
+}
+
+/* New Back to Feed button styles */
+.back-button-container {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.back-link {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background-color: #7b91a0;
+  color: white;
+  border-radius: 5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+  user-select: none;
+  cursor: pointer;
+}
+
+.back-link:hover {
+  background-color: #62b3be;
+  text-decoration: none;
 }
 </style>

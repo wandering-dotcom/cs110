@@ -7,6 +7,7 @@
         :followingCount="userStats.followingCount"
         :followersCount="userStats.followersCount"
       />
+      <PostInput v-if="currentUser" @new-post="addPost" />
     </div>
     
     <div class="center-panel">
@@ -28,7 +29,6 @@
 
       <!-- Pass isPersonalFeed so PostFeed knows which feed it is -->
       <PostFeed :posts="feedPosts" :isPersonalFeed="showPersonalFeed" />
-      <PostInput v-if="currentUser" @new-post="addPost" />
     </div>
     
     <div class="right-panel">
@@ -80,7 +80,6 @@ async function loadCurrentUser() {
   }
 }
 
-// Enrich posts with author usernames
 async function enrichPostsWithUsernames(posts) {
   const uniqueAuthorIds = [...new Set(posts.map(post => post.authorId))]
   const userDocs = await Promise.all(
@@ -95,15 +94,10 @@ async function enrichPostsWithUsernames(posts) {
 
   return posts.map(post => ({
     ...post,
-    authorUsername: uidToUsername[post.authorId] || 'Unknown',
-    originalPostId: post.originalPostId || null,
-    highlightedQuote: post.highlightedQuote || null,
-    repostComment: post.repostComment || null,
-    isRepost: !!post.originalPostId
+    authorUsername: uidToUsername[post.authorId] || 'Unknown'
   }))
 }
 
-// Enrich reposts by fetching original post data
 async function enrichRepostsWithOriginalContent(posts) {
   const reposts = posts.filter(post => post.originalPostId)
   if (reposts.length === 0) return posts
@@ -114,23 +108,42 @@ async function enrichRepostsWithOriginalContent(posts) {
   )
 
   const originalPostsMap = {}
+  const uniqueOriginalAuthorIds = new Set()
+
   for (const docSnap of originalPostDocs) {
     if (docSnap.exists()) {
-      originalPostsMap[docSnap.id] = docSnap.data()
+      const data = docSnap.data()
+      originalPostsMap[docSnap.id] = data
+      if (data.authorId) uniqueOriginalAuthorIds.add(data.authorId)
+    }
+  }
+
+  // Fetch usernames for original authors
+  const authorDocs = await Promise.all(
+    Array.from(uniqueOriginalAuthorIds).map(uid => getDoc(doc(firestore, 'users', uid)))
+  )
+
+  const authorIdToUsername = {}
+  for (const docSnap of authorDocs) {
+    if (docSnap.exists()) {
+      authorIdToUsername[docSnap.id] = docSnap.data().username || 'Unknown'
     }
   }
 
   return posts.map(post => {
     if (post.originalPostId && originalPostsMap[post.originalPostId]) {
       const original = originalPostsMap[post.originalPostId]
+      const originalAuthorId = original.authorId
       return {
         ...post,
         originalPostContent: original.content,
-        originalPostAuthorId: original.authorId,
-        originalPostTimestamp: original.timestamp
+        originalPostAuthorId: originalAuthorId,
+        originalPostTimestamp: original.timestamp,
+        originalPostAuthorUsername: authorIdToUsername[originalAuthorId] || 'Unknown',
+        isRepost: true
       }
     }
-    return post
+    return { ...post, isRepost: false }
   })
 }
 
@@ -141,24 +154,23 @@ async function loadFeedPosts() {
   }
 
   if (!currentUser.value) {
-    // No user → global feed
     let posts = await fetchFeedPosts(null)
+    posts = posts.slice(0, 10)
     posts = await enrichPostsWithUsernames(posts)
     posts = await enrichRepostsWithOriginalContent(posts)
     feedPosts.value = posts
   } else if (showPersonalFeed.value) {
-    // Personal feed (realtime)
     const following = currentUser.value.following || []
-    const authorIds = following.slice(0, 10)
+    const authorIds = following
 
     unsubscribeFeed = watchFeedPosts(authorIds, async (posts) => {
       let enriched = await enrichPostsWithUsernames(posts)
       enriched = await enrichRepostsWithOriginalContent(enriched)
-      feedPosts.value = enriched
+      feedPosts.value = enriched.slice(0, 10) // 👈 limit to 10 personal posts
     })
   } else {
-    // Global feed (logged-in, static)
     let posts = await fetchFeedPosts(null)
+    posts = posts.slice(0, 10)
     posts = await enrichPostsWithUsernames(posts)
     posts = await enrichRepostsWithOriginalContent(posts)
     feedPosts.value = posts
@@ -208,7 +220,6 @@ async function handleFollow(targetUser) {
 
 async function handleUnfollow(targetUser) {
   await unfollowUser(currentUser.value.uid, targetUser.uid)
-
   await refreshUserStats()
   await loadFeedPosts()
   await loadSuggestions()
@@ -218,10 +229,8 @@ async function addPost(content) {
   try {
     const username = currentUser.value.username || 'Unknown'
     await createPost(currentUser.value.uid, content, username)
-
     userStats.value.postsCount++
     await refreshUserStats()
-
     if (!showPersonalFeed.value) {
       const posts = await fetchFeedPosts(null)
       feedPosts.value = posts
