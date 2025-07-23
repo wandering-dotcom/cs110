@@ -28,4 +28,3 @@ coverage
 *.sw?
 
 *.tsbuildinfo
-firebase-admin-key.json
