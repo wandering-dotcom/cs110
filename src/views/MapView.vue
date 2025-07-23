@@ -45,6 +45,23 @@ const latLngReady = computed(() =>
   (lat.value != null && lng.value != null) || reposts.value.length > 0
 )
 
+// Yongsan-gu bounding box
+const isInYongsan = (lat, lng) => {
+  return lat >= 37.525 && lat <= 37.555 && lng >= 126.960 && lng <= 126.995
+}
+
+// Generate random lat/lng inside Yongsan-gu
+function getRandomYongsanLatLng() {
+  const minLat = 37.525
+  const maxLat = 37.555
+  const minLng = 126.960
+  const maxLng = 126.995
+  return {
+    lat: Math.random() * (maxLat - minLat) + minLat,
+    lng: Math.random() * (maxLng - minLng) + minLng
+  }
+}
+
 onMounted(async () => {
   if (!postId) return
 
@@ -55,6 +72,16 @@ onMounted(async () => {
     if (docSnap.exists()) {
       postData.value = docSnap.data()
 
+      if (
+        postData.value.lat == null ||
+        postData.value.lng == null ||
+        !isInYongsan(postData.value.lat, postData.value.lng)
+      ) {
+        const randomCoords = getRandomYongsanLatLng()
+        postData.value.lat = randomCoords.lat
+        postData.value.lng = randomCoords.lng
+      }
+
       const repostQuery = query(
         collection(firestore, 'posts'),
         where('originalPostId', '==', postId)
@@ -62,7 +89,18 @@ onMounted(async () => {
       const repostSnap = await getDocs(repostQuery)
       reposts.value = repostSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(r => r.lat != null && r.lng != null)
+        .map(r => {
+          if (
+            r.lat == null ||
+            r.lng == null ||
+            !isInYongsan(r.lat, r.lng)
+          ) {
+            const randomCoords = getRandomYongsanLatLng()
+            r.lat = randomCoords.lat
+            r.lng = randomCoords.lng
+          }
+          return r
+        })
 
       await nextTick()
 
@@ -78,18 +116,9 @@ onMounted(async () => {
             map.value.remove()
           }
 
-          // Fallback to first repost if original is missing lat/lng
-          let center
-          if (lat.value != null && lng.value != null) {
-            center = [lat.value, lng.value]
-          } else if (reposts.value.length > 0) {
-            center = [reposts.value[0].lat, reposts.value[0].lng]
-          } else {
-            console.warn('No valid coordinates to center map.')
-            return
-          }
+          let center = [lat.value, lng.value]
 
-          map.value = L.map('map', { zoomControl: true }).setView(center, 13)
+          map.value = L.map('map', { zoomControl: true }).setView(center, 15)
 
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -97,35 +126,48 @@ onMounted(async () => {
 
           setTimeout(() => map.value.invalidateSize(), 200)
 
-          // Original post marker
-          if (lat.value != null && lng.value != null) {
-            L.marker([lat.value, lng.value]).addTo(map.value)
-              .bindPopup(postData.value.title || 'Original Post')
-              .openPopup()
-          }
+          // Original marker
+          L.marker(center).addTo(map.value)
+            .bindPopup(postData.value.title || 'Original Post')
+            .openPopup()
 
-          // Repost heat layer
-          const heatPoints = reposts.value.map(r => [r.lat, r.lng, 0.7])
+          const heatPoints = reposts.value
+            .filter(r => typeof r.lat === 'number' && typeof r.lng === 'number' && isInYongsan(r.lat, r.lng))
+            .map(r => [r.lat, r.lng, 1])
+
+          console.log('Heat points:', heatPoints)
+
           if (heatPoints.length > 0) {
-            const heatLayer = L.heatLayer(heatPoints, {
-              radius: 20,
-              blur: 15,
-              maxZoom: 17
-            }).addTo(map.value)
+            map.value.whenReady(() => {
+              L.heatLayer(heatPoints, {
+                radius: 40,
+                blur: 25,
+                maxZoom: 17,
+                gradient: {
+                  0.4: 'blue',
+                  0.6: 'lime',
+                  0.8: 'orange',
+                  1.0: 'red'
+                }
+              }).addTo(map.value)
 
-            const bounds = L.latLngBounds(heatPoints.map(p => [p[0], p[1]]))
-            map.value.fitBounds(bounds.pad(0.2))
+              const bounds = L.latLngBounds(heatPoints.map(p => [p[0], p[1]]))
+              map.value.fitBounds(bounds.pad(0.1))
+
+              setTimeout(() => map.value.invalidateSize(), 200)
+            })
           }
 
-          // 🔁 Add marker for each repost
           reposts.value.forEach(repost => {
-            const marker = L.marker([repost.lat, repost.lng]).addTo(map.value)
-            const popupContent = `
-              <strong>@${repost.authorUsername}</strong><br>
-              <em>${repost.highlightedQuote || ''}</em><br>
-              ${repost.repostComment || ''}
-            `
-            marker.bindPopup(popupContent)
+            if (isInYongsan(repost.lat, repost.lng)) {
+              const marker = L.marker([repost.lat, repost.lng]).addTo(map.value)
+              const popupContent = `
+                <strong>@${repost.authorUsername}</strong><br>
+                <em>${repost.highlightedQuote || ''}</em><br>
+                ${repost.repostComment || ''}
+              `
+              marker.bindPopup(popupContent)
+            }
           })
         }
       }, 100)

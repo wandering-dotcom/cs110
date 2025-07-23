@@ -141,7 +141,7 @@ onMounted(() => loadHighlights())
 }
 
 .comments {
-  background: rgb(159, 159, 253);
+  background: #64999c;
   padding: 1rem;
   border-radius: 8px;
   max-width: 600px;
