@@ -14,14 +14,25 @@
       </span>
     </div>
 
-    <div v-if="selectedWord" class="comments">
-      <h4>Comments for "{{ selectedWord }}"</h4>
-      <ul>
-        <li v-for="comment in wordComments[selectedWord]" :key="comment.id">
-          {{ comment.comment }}
+    <div
+      v-if="selectedWord && groupedComments[selectedWord]?.length"
+      class="comments-box"
+    >
+      <h4>Reposts with "{{ selectedWord }}"</h4>
+      <ul class="comment-list">
+        <li v-for="authorGroup in groupedComments[selectedWord]" :key="authorGroup.username">
+          <strong>@{{ authorGroup.username }}</strong>
+          <ul class="quote-list">
+            <li v-for="entry in authorGroup.entries" :key="entry.id">
+              <router-link :to="`/post/${entry.id}`">
+                <span class="quote">“{{ entry.quote }}”</span>
+              </router-link>
+              <span v-if="entry.comment"> — {{ entry.comment }}</span>
+            </li>
+          </ul>
         </li>
       </ul>
-      <button @click="selectedWord = ''">Close</button>
+      <button @click="selectedWord = ''" class="close-btn">Close</button>
     </div>
   </div>
 </template>
@@ -36,10 +47,27 @@ const props = defineProps({
 })
 
 const wordCounts = ref({})
-const wordOrder = ref([]) // preserves original order
+const wordOrder = ref([])
 const totalHighlights = ref(0)
 const wordComments = ref({})
 const selectedWord = ref('')
+
+// Group entries by author for each word
+const groupedComments = computed(() => {
+  const out = {}
+  for (const [word, entries] of Object.entries(wordComments.value)) {
+    const byAuthor = {}
+    entries.forEach(entry => {
+      if (!byAuthor[entry.username]) byAuthor[entry.username] = []
+      byAuthor[entry.username].push(entry)
+    })
+    out[word] = Object.entries(byAuthor).map(([username, entries]) => ({
+      username,
+      entries
+    }))
+  }
+  return out
+})
 
 const wordPercentages = computed(() => {
   const out = {}
@@ -58,9 +86,7 @@ function getWordStyle(word) {
 
   const hue = 190
   const saturation = 70
-  const lightness = 85 - (pct * 0.5) // Range from 85% (light) to 60% (dark)
-
-  // Determine text color based on lightness
+  const lightness = 85 - (pct * 0.5)
   const textColor = lightness < 70 ? '#fff' : '#002b36'
 
   return {
@@ -78,7 +104,6 @@ function selectWord(word) {
 async function loadHighlights() {
   if (!props.postId) return
 
-  // Load original post first
   const originalPostRef = doc(firestore, 'posts', props.postId)
   const originalSnap = await getDoc(originalPostRef)
   if (!originalSnap.exists()) return
@@ -90,14 +115,12 @@ async function loadHighlights() {
     .split(/\s+/)
     .filter(Boolean)
 
-  // Set word order and initialize counts
   wordOrder.value = words
   wordCounts.value = {}
   words.forEach(word => {
     if (word) wordCounts.value[word] = 0
   })
 
-  // Load reposts
   const repostQuery = query(
     collection(firestore, 'posts'),
     where('originalPostId', '==', props.postId)
@@ -120,15 +143,17 @@ async function loadHighlights() {
       .filter(Boolean)
 
     quotedWords.forEach(word => {
-      if (!word) return
-      if (!(word in wordCounts.value)) return // skip if not in original post
+      if (!(word in wordCounts.value)) return
       wordCounts.value[word]++
       totalHighlights.value++
 
-      if (comment) {
-        if (!wordComments.value[word]) wordComments.value[word] = []
-        wordComments.value[word].push({ id: repost.id, comment })
-      }
+      if (!wordComments.value[word]) wordComments.value[word] = []
+      wordComments.value[word].push({
+        id: repost.id,
+        username: repost.authorUsername || 'Unknown',
+        quote: repost.highlightedQuote || '',
+        comment
+      })
     })
   })
 }
@@ -167,17 +192,65 @@ onMounted(() => loadHighlights())
   color: #004a6e;
 }
 
-.comments {
-  background: #8dd9dd;
-  padding: 1rem;
+.comments-box {
+  background: #f8fbfd;
+  padding: 0.75rem 1rem;
   border-radius: 8px;
-  max-width: 600px;
   margin-top: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  max-width: 700px;
+  color: black;
 }
 
-.comments ul {
-  list-style: disc inside;
-  max-height: 150px;
+.comment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0 0.75rem;
+  max-height: 240px;
   overflow-y: auto;
+}
+
+.comment-list > li {
+  margin-bottom: 0.5rem;
+}
+
+.quote-list {
+  list-style: none;
+  margin-top: 0.25rem;
+  padding-left: 1rem;
+}
+
+.quote-list li {
+  margin-bottom: 0.25rem;
+}
+
+.comment-list a {
+  color: #005b8f;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.comment-list a:hover {
+  text-decoration: underline;
+}
+
+.quote {
+  font-style: italic;
+  color: #003348;
+}
+
+.close-btn {
+  background-color: #7b91a0;
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: #62b3be;
 }
 </style>

@@ -21,17 +21,17 @@
         <h3>Reposts</h3>
         <ul>
           <li v-for="repost in reposts" :key="repost.id">
-            <router-link :to="`/post/${repost.originalPostId}`">
+            <a href="#" @click.prevent="showMarkerPopup(repost.id)">
               <strong>@{{ repost.authorUsername }}</strong>:
               <span v-if="repost.highlightedQuote">“{{ repost.highlightedQuote }}”</span>
-            </router-link>
+            </a>
             <span v-if="repost.repostComment"> — {{ repost.repostComment }}</span>
           </li>
         </ul>
+        <button v-if="selectedMarkerId" @click="clearSelection" class="clear-btn">Clear Selection</button>
       </div>
     </div>
 
-    <!-- Back to Feed button below legend and repost feed -->
     <div class="back-button-container">
       <router-link to="/" class="back-link">← Back to Feed</router-link>
     </div>
@@ -56,6 +56,8 @@ const reposts = ref([])
 const loading = ref(true)
 const map = ref(null)
 const markers = []
+const markerMap = {} // ✅ New: map of repost.id => marker
+const selectedMarkerId = ref(null)
 
 const lat = computed(() => postData.value?.lat)
 const lng = computed(() => postData.value?.lng)
@@ -63,12 +65,8 @@ const latLngReady = computed(() =>
   (lat.value != null && lng.value != null) || reposts.value.length > 0
 )
 
-// Yongsan-gu bounding box
-const isInYongsan = (lat, lng) => {
-  return lat >= 37.525 && lat <= 37.555 && lng >= 126.960 && lng <= 126.995
-}
+const isInYongsan = (lat, lng) => lat >= 37.525 && lat <= 37.555 && lng >= 126.960 && lng <= 126.995
 
-// Generate random lat/lng inside Yongsan-gu
 function getRandomYongsanLatLng() {
   const minLat = 37.525
   const maxLat = 37.555
@@ -83,6 +81,7 @@ function getRandomYongsanLatLng() {
 function clearMarkers() {
   markers.forEach(marker => map.value.removeLayer(marker))
   markers.length = 0
+  Object.keys(markerMap).forEach(id => delete markerMap[id])
 }
 
 function addRepostMarkers(radius) {
@@ -105,8 +104,25 @@ function addRepostMarkers(radius) {
       `
       marker.bindPopup(popupContent)
       markers.push(marker)
+      markerMap[repost.id] = marker
     }
   })
+}
+
+function showMarkerPopup(id) {
+  const marker = markerMap[id]
+  if (marker && map.value) {
+    marker.openPopup()
+    map.value.setView(marker.getLatLng(), Math.max(map.value.getZoom(), 15))
+    selectedMarkerId.value = id
+  }
+}
+
+function clearSelection() {
+  if (selectedMarkerId.value && markerMap[selectedMarkerId.value]) {
+    markerMap[selectedMarkerId.value].closePopup()
+  }
+  selectedMarkerId.value = null
 }
 
 onMounted(async () => {
@@ -119,11 +135,7 @@ onMounted(async () => {
     if (docSnap.exists()) {
       postData.value = docSnap.data()
 
-      if (
-        postData.value.lat == null ||
-        postData.value.lng == null ||
-        !isInYongsan(postData.value.lat, postData.value.lng)
-      ) {
+      if (!isInYongsan(postData.value.lat, postData.value.lng)) {
         const randomCoords = getRandomYongsanLatLng()
         postData.value.lat = randomCoords.lat
         postData.value.lng = randomCoords.lng
@@ -137,14 +149,10 @@ onMounted(async () => {
       reposts.value = repostSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .map(r => {
-          if (
-            r.lat == null ||
-            r.lng == null ||
-            !isInYongsan(r.lat, r.lng)
-          ) {
-            const randomCoords = getRandomYongsanLatLng()
-            r.lat = randomCoords.lat
-            r.lng = randomCoords.lng
+          if (!isInYongsan(r.lat, r.lng)) {
+            const coords = getRandomYongsanLatLng()
+            r.lat = coords.lat
+            r.lng = coords.lng
           }
           return r
         })
@@ -153,10 +161,7 @@ onMounted(async () => {
 
       setTimeout(() => {
         const mapContainer = document.getElementById('map')
-        if (!mapContainer) {
-          console.error('Map container not found in DOM.')
-          return
-        }
+        if (!mapContainer) return
 
         if (latLngReady.value) {
           if (map.value && map.value._leaflet_id) {
@@ -173,26 +178,17 @@ onMounted(async () => {
 
           setTimeout(() => map.value.invalidateSize(), 200)
 
-          // Original marker (default icon)
           L.marker(center).addTo(map.value).bindPopup('Original Post Location').openPopup()
 
-          // Add repost circle markers with radius depending on zoom
           function updateMarkersRadius() {
             const zoom = map.value.getZoom()
-            // Adjust radius by zoom level (example logic)
-            let radius = 2
-            if (zoom >= 17) radius = 4
-            else if (zoom >= 15) radius = 3
-            else if (zoom >= 13) radius = 2
-            else radius = 1
-
+            let radius = zoom >= 17 ? 4 : zoom >= 15 ? 3 : zoom >= 13 ? 2 : 1
             addRepostMarkers(radius)
           }
 
           map.value.on('zoomend', updateMarkersRadius)
           updateMarkersRadius()
 
-          // Heatmap layer for repost locations
           const heatPoints = reposts.value.map(r => [r.lat, r.lng, 0.6])
           const heat = L.heatLayer(heatPoints, {
             radius: 25,
@@ -230,7 +226,7 @@ onMounted(async () => {
 @media (min-width: 768px) {
   .legend-and-feed {
     flex-direction: row;
-    align-items: flex-start; /* align tops */
+    align-items: flex-start;
   }
 
   .map-legend {
@@ -250,7 +246,6 @@ onMounted(async () => {
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
   font-size: 0.9rem;
   max-width: 240px;
-  transition: all 0.3s ease;
 }
 
 .map-legend h4 {
@@ -260,17 +255,13 @@ onMounted(async () => {
   color: #003348;
 }
 
-.circle-sample,
-.heat-sample {
+.circle-sample {
+  background-color: #3388ff;
   display: inline-block;
   width: 12px;
   height: 12px;
   margin-right: 6px;
   border-radius: 50%;
-}
-
-.circle-sample {
-  background-color: #3388ff;
 }
 
 .heat-label {
@@ -334,7 +325,21 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-/* New Back to Feed button styles */
+.clear-btn {
+  margin-top: 1rem;
+  background-color: #ccc;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s ease;
+}
+
+.clear-btn:hover {
+  background-color: #aaa;
+}
+
 .back-button-container {
   margin-top: 1rem;
   text-align: left;
@@ -349,12 +354,9 @@ onMounted(async () => {
   font-weight: 600;
   text-decoration: none;
   transition: background-color 0.2s ease;
-  user-select: none;
-  cursor: pointer;
 }
 
 .back-link:hover {
   background-color: #62b3be;
-  text-decoration: none;
 }
 </style>

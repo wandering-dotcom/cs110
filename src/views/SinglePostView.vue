@@ -5,17 +5,21 @@
     <div v-if="loading">Loading post...</div>
     <div v-else-if="!post">Post not found.</div>
     <div v-else>
-      <PostItem :post="post" />
+      <!-- Pass showMenu based on whether it's a repost -->
+      <PostItem :post="post" :showMenu="!isRepost" />
 
-      <router-link to="/" class="back-link">
-        ← Back to Feed
+      <router-link
+        :to="isRepost ? `/map/${post.originalPostId}` : `/`"
+        class="back-link"
+      >
+        ← Back to {{ isRepost ? 'Map' : 'Feed' }}
       </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../firebaseResources'
@@ -27,13 +31,14 @@ const postId = route.params.postId
 const post = ref(null)
 const loading = ref(true)
 
+const isRepost = computed(() => !!post.value?.originalPostId)
+
 onMounted(async () => {
   try {
     const snap = await getDoc(doc(firestore, 'posts', postId))
     if (snap.exists()) {
       const postData = { id: snap.id, ...snap.data() }
 
-      // Attach username
       if (postData.authorId) {
         const userSnap = await getDoc(doc(firestore, 'users', postData.authorId))
         postData.authorUsername = userSnap.exists() ? userSnap.data().username : 'Unknown'

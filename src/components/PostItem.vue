@@ -1,16 +1,23 @@
 <template>
   <div class="post">
     <div class="post-header" ref="dropdownRef">
-        <div class="user-meta">
-        <router-link :to="`/user/${post.authorUsername}`">@{{ post.authorUsername || 'Unknown' }}</router-link><span class="timestamp"> on {{ formattedDate }} at {{ formattedTime }}</span>
-        </div>
+      <div class="user-meta">
+        <router-link :to="`/user/${post.authorUsername}`">@{{ post.authorUsername || 'Unknown' }}</router-link>
+        <span class="timestamp"> on {{ formattedDate }} at {{ formattedTime }}</span>
+      </div>
 
       <!-- 🔒 Show menu only if NOT a repost -->
       <template v-if="!post.isRepost">
         <div class="menu" @click.stop="toggleMenu">⋮</div>
         <div v-if="showMenu" class="dropdown" @click.stop>
           <a href="#" class="dropdown-option" @click.prevent="goToHeatmap">View Heatmap</a>
-          <router-link :to="`/repost/${post.id}`">Repost & Annotate</router-link>
+          <router-link
+            v-if="isLoggedIn"
+            :to="`/repost/${post.id}`"
+            class="dropdown-option"
+          >
+            Repost & Annotate
+          </router-link>
         </div>
       </template>
     </div>
@@ -20,12 +27,9 @@
       <blockquote class="original-content">
         <span class="quote-text">“{{ post.originalPostContent || 'Original content not found.' }}”</span>
         <footer v-if="post.originalPostAuthorUsername">
-        — <router-link
-                :to="`/user/${post.originalPostAuthorUsername}`"
-                class="profile-link"
-            >
+          — <router-link :to="`/user/${post.originalPostAuthorUsername}`" class="profile-link">
             @{{ post.originalPostAuthorUsername }}
-        </router-link>
+          </router-link>
         </footer>
       </blockquote>
       <p v-if="post.repostComment" class="repost-comment">{{ post.repostComment }}</p>
@@ -42,6 +46,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { store } from '../stores/store.js' // ✅ Import store
 
 const router = useRouter()
 const showMenu = ref(false)
@@ -53,6 +58,9 @@ const props = defineProps({
     required: true
   }
 })
+
+// ✅ Check if user is logged in
+const isLoggedIn = computed(() => !!store.currentUser)
 
 function goToHeatmap() {
   if (!props.post.id) return
