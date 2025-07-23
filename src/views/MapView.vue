@@ -5,6 +5,12 @@
     <div v-if="latLngReady" id="map"></div>
     <div v-else>Map data not available</div>
 
+    <div id="map-legend" class="map-legend">
+    <h4>Legend</h4>
+    <div><span class="circle-sample"></span> Repost location</div>
+    <div><span class="heat-sample"></span> Heatmap intensity</div>
+    </div>
+
     <div v-if="reposts.length" class="repost-feed">
       <h3>Reposts</h3>
       <ul>
@@ -38,6 +44,7 @@ const postData = ref(null)
 const reposts = ref([])
 const loading = ref(true)
 const map = ref(null)
+const markers = []
 
 const lat = computed(() => postData.value?.lat)
 const lng = computed(() => postData.value?.lng)
@@ -60,6 +67,35 @@ function getRandomYongsanLatLng() {
     lat: Math.random() * (maxLat - minLat) + minLat,
     lng: Math.random() * (maxLng - minLng) + minLng
   }
+}
+
+function clearMarkers() {
+  markers.forEach(marker => map.value.removeLayer(marker))
+  markers.length = 0
+}
+
+function addRepostMarkers(radius) {
+  clearMarkers()
+  reposts.value.forEach(repost => {
+    if (isInYongsan(repost.lat, repost.lng)) {
+      const marker = L.circleMarker([repost.lat, repost.lng], {
+        radius,
+        fillColor: '#3388ff',
+        color: '#3388ff',
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map.value)
+
+      const popupContent = `
+        <strong>@${repost.authorUsername}</strong><br>
+        <em>${repost.highlightedQuote || ''}</em><br>
+        ${repost.repostComment || ''}
+      `
+      marker.bindPopup(popupContent)
+      markers.push(marker)
+    }
+  })
 }
 
 onMounted(async () => {
@@ -116,7 +152,7 @@ onMounted(async () => {
             map.value.remove()
           }
 
-          let center = [lat.value, lng.value]
+          const center = [lat.value, lng.value]
 
           map.value = L.map('map', { zoomControl: true }).setView(center, 15)
 
@@ -126,54 +162,38 @@ onMounted(async () => {
 
           setTimeout(() => map.value.invalidateSize(), 200)
 
-          // Original marker
-          L.marker(center).addTo(map.value)
-            .bindPopup(postData.value.title || 'Original Post')
-            .openPopup()
+          // Original marker (default icon)
+          L.marker(center).addTo(map.value).bindPopup('Original Post Location').openPopup()
 
-          const heatPoints = reposts.value
-            .filter(r => typeof r.lat === 'number' && typeof r.lng === 'number' && isInYongsan(r.lat, r.lng))
-            .map(r => [r.lat, r.lng, 1])
+          // Add repost circle markers with radius depending on zoom
+          function updateMarkersRadius() {
+            const zoom = map.value.getZoom()
+            // Adjust radius by zoom level (example logic)
+            let radius = 2
+            if (zoom >= 17) radius = 4
+            else if (zoom >= 15) radius = 3
+            else if (zoom >= 13) radius = 2
+            else radius = 1
 
-          console.log('Heat points:', heatPoints)
-
-          if (heatPoints.length > 0) {
-            map.value.whenReady(() => {
-              L.heatLayer(heatPoints, {
-                radius: 40,
-                blur: 25,
-                maxZoom: 17,
-                gradient: {
-                  0.4: 'blue',
-                  0.6: 'lime',
-                  0.8: 'orange',
-                  1.0: 'red'
-                }
-              }).addTo(map.value)
-
-              const bounds = L.latLngBounds(heatPoints.map(p => [p[0], p[1]]))
-              map.value.fitBounds(bounds.pad(0.1))
-
-              setTimeout(() => map.value.invalidateSize(), 200)
-            })
+            addRepostMarkers(radius)
           }
 
-          reposts.value.forEach(repost => {
-            if (isInYongsan(repost.lat, repost.lng)) {
-              const marker = L.marker([repost.lat, repost.lng]).addTo(map.value)
-              const popupContent = `
-                <strong>@${repost.authorUsername}</strong><br>
-                <em>${repost.highlightedQuote || ''}</em><br>
-                ${repost.repostComment || ''}
-              `
-              marker.bindPopup(popupContent)
-            }
-          })
-        }
-      }, 100)
+          map.value.on('zoomend', updateMarkersRadius)
+          updateMarkersRadius()
+
+          // Heatmap layer for repost locations
+          const heatPoints = reposts.value.map(r => [r.lat, r.lng, 0.6])
+            const heat = L.heatLayer(heatPoints, {
+            radius: 25,
+            maxZoom: 17,
+            blur: 20,
+            max: 1.0
+            }).addTo(map.value)
+                    }
+      }, 1500)
     }
-  } catch (err) {
-    console.error('MapView failed:', err)
+  } catch (error) {
+    console.error('Error loading post or repost data:', error)
   } finally {
     loading.value = false
   }
@@ -182,42 +202,55 @@ onMounted(async () => {
 
 <style scoped>
 #map {
-  height: 400px;
   width: 100%;
-  margin-top: 1rem;
-  border-radius: 6px;
-  border: 2px solid #ccc;
+  height: 500px;
+  margin-top: 12px;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
 }
 
 .repost-feed {
-  margin-top: 1rem;
-  background: rgba(189, 240, 245, 0.672);
-  border-radius: 6px;
-  padding: 1rem;
-}
-
-.repost-feed ul {
-  list-style: none;
-  padding: 0;
-  color: rgb(255, 255, 255);
-}
-
-.repost-feed li {
-  margin-bottom: 0.75rem;
-  padding: 0.5rem;
-  background: rgb(66, 84, 84);
-  border-radius: 4px;
+  margin-top: 20px;
 }
 
 .back-link {
   display: inline-block;
-  margin-top: 1rem;
-  color: #053136;
+  margin-top: 10px;
+  color: #555;
   text-decoration: none;
-  font-weight: bold;
 }
 
 .back-link:hover {
   text-decoration: underline;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  z-index: 999;
+  color: black;
+}
+
+.circle-sample,
+.heat-sample {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.circle-sample {
+  background-color: #3388ff;
+}
+
+.heat-sample {
+  background: linear-gradient(135deg, orange, red);
 }
 </style>
